@@ -250,9 +250,16 @@ def render_solve(res: ApiResult, expected: str | None) -> None:
     if res.status in (400, 413, 429, 503):
         st.error(f"Request refused ({res.status}): {problem}. {d.get('detail') or ''}")
         return
-    if res.status == 422:
+    if res.status == 422 and d.get("challenge_type") == "unsupported":
+        why = "; ".join((d.get("detail") or {}).get("classifier_reasons") or []) or problem
+        st.warning(
+            f"**Not solved: this is not a challenge the solver supports.** Classifier: {why}. "
+            "The local solver reads generated text challenges (about 160×48 px) and generated arithmetic strips. "
+            "Grids, photos and other sizes are never sent to a solver, because it would answer them with confidence "
+            "and be wrong. Try a held-out or math sample, or a challenge from `python ml/generate_dataset.py`.")
+    elif res.status == 422:
         st.warning(f"Not solved: {problem}. The image was recognised as **{d.get('challenge_type')}**; "
-                   "unsupported or unreadable challenges are never sent to a solver.")
+                   "unreadable challenges are never sent to a solver.")
     elif d.get("accepted"):
         match = ""
         if expected:
