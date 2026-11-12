@@ -357,3 +357,48 @@ def test_overview_shows_solver_status_budget_and_cost_by_method(monkeypatch, fak
 def test_overview_without_the_solvers_endpoint_still_renders(monkeypatch, fake_api):
     monkeypatch.setattr(ApiClient, "solvers", lambda self: ApiResult(0, {"reason": "api_unreachable"}))
     assert not run_page("Overview").exception
+
+
+# ── pagination ───────────────────────────────────────────────────────────────
+def _attempt_rows(n):
+    return [{"id": i, "challenge_type": "text", "method": "crnn_onnx", "predicted": f"P{i}", "expected": None,
+             "success": True, "confidence": 0.9, "processing_ms": 5, "cost_usd": 0.0, "error": None}
+            for i in range(n, 0, -1)]
+
+
+def _rows_caption(at):
+    return next((c.value for c in at.caption if c.value.startswith("Rows ")), None)
+
+
+def test_long_tables_are_paged_with_navigation(monkeypatch, fake_api):
+    monkeypatch.setattr(ApiClient, "attempts", lambda self, *a, **k: ApiResult(200, {"total": 35, "items": _attempt_rows(35)}))
+    at = run_page("Overview")
+    assert not at.exception
+    assert _rows_caption(at) == "Rows 1-10 of 35"
+    assert at.button(key="tbl_attempts_prev").disabled is True
+    at.button(key="tbl_attempts_next").click().run()
+    assert _rows_caption(at) == "Rows 11-20 of 35"
+    at.button(key="tbl_attempts_next").click().run()
+    at.button(key="tbl_attempts_next").click().run()
+    assert _rows_caption(at) == "Rows 31-35 of 35"                 # last page is short
+    assert at.button(key="tbl_attempts_next").disabled is True
+    at.button(key="tbl_attempts_prev").click().run()
+    assert _rows_caption(at) == "Rows 21-30 of 35"
+
+
+def test_changing_rows_per_page_keeps_the_page_in_range(monkeypatch, fake_api):
+    monkeypatch.setattr(ApiClient, "attempts", lambda self, *a, **k: ApiResult(200, {"total": 35, "items": _attempt_rows(35)}))
+    at = run_page("Overview")
+    for _ in range(3):
+        at.button(key="tbl_attempts_next").click().run()           # page 4 of 4
+    at.selectbox(key="tbl_attempts_size").set_value(25).run()      # only 2 pages now: must clamp, not break
+    assert not at.exception and _rows_caption(at) == "Rows 26-35 of 35"
+    at.selectbox(key="tbl_attempts_size").set_value(50).run()
+    assert _rows_caption(at) == "Rows 1-35 of 35"
+    assert at.button(key="tbl_attempts_prev").disabled and at.button(key="tbl_attempts_next").disabled
+
+
+def test_short_tables_show_no_pager(monkeypatch, fake_api):
+    monkeypatch.setattr(ApiClient, "attempts", lambda self, *a, **k: ApiResult(200, {"total": 4, "items": _attempt_rows(4)}))
+    at = run_page("Overview")
+    assert not at.exception and _rows_caption(at) is None

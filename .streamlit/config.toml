@@ -6,3 +6,6 @@ maxUploadSize = 5   # MB, matches the API's MAX_UPLOAD_BYTES
 
 [browser]
 gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"

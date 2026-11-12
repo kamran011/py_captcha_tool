@@ -12,17 +12,43 @@ import streamlit as st
 from dashboard import samples
 from dashboard.client import ApiClient, ApiResult
 
-st.set_page_config(page_title="CAPTCHA Tool", page_icon=":lock:", layout="wide")
+st.set_page_config(page_title="CAPTCHA Tool", page_icon=":lock:", layout="wide", initial_sidebar_state="expanded",
+                   menu_items={"Get help": None, "Report a bug": None,
+                               "About": "CAPTCHA Solving & Verification Tool, Technology Brainz Assignment 01."})
 api = ApiClient()
 PAGES = ["Overview", "Solve", "Verify", "Detect", "Batch", "Sites"]
 
-page = st.sidebar.radio("Navigate", PAGES, key="page")
-health = api.health()
-if health.ok:
-    st.sidebar.success("API online")
-else:
-    st.sidebar.error("API offline")
-st.sidebar.caption("CAPTCHA Solving & Verification Tool  \nTechnology Brainz, Assignment 01")
+# Presentation only. Hides the Streamlit menu, deploy button, footer and top decoration (this is a single-purpose
+# tool, not a multi-page app builder), and gives metrics a card look that works in both light and dark themes.
+STYLE = """
+<style>
+#MainMenu, footer, [data-testid="stMainMenu"], [data-testid="stAppDeployButton"],
+[data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
+header[data-testid="stHeader"] { background: transparent; }
+.block-container { padding-top: 2.4rem; padding-bottom: 3rem; max-width: 1320px; }
+h1 { font-size: 1.85rem !important; font-weight: 650; margin-bottom: 0 !important; padding-bottom: .15rem !important; }
+h3 { font-size: 1.1rem !important; font-weight: 600; margin-top: 1.4rem !important; padding-bottom: .3rem !important; }
+[data-testid="stMetric"] { background: rgba(128,128,128,.07); border: 1px solid rgba(128,128,128,.22);
+    border-radius: 10px; padding: .65rem .9rem; min-height: 5.6rem; }
+[data-testid="stMetricLabel"], [data-testid="stMetricLabel"] * { white-space: normal !important; overflow: visible !important;
+    text-overflow: clip !important; font-size: .74rem !important; letter-spacing: .04em; text-transform: uppercase; opacity: .72; }
+[data-testid="stMetricValue"], [data-testid="stMetricValue"] * { font-size: 1.45rem !important; line-height: 1.3;
+    white-space: normal !important; overflow-wrap: anywhere; }
+[data-testid="stCaptionContainer"] { opacity: .8; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label { padding: .15rem 0; }
+</style>
+"""
+st.markdown(STYLE, unsafe_allow_html=True)
+
+with st.sidebar:
+    st.markdown("### :lock: CAPTCHA Tool")
+    page = st.radio("Navigate", PAGES, key="page", label_visibility="collapsed")
+    health = api.health()
+    if health.ok:
+        st.success("API online")
+    else:
+        st.error("API offline")
+    st.caption("CAPTCHA Solving & Verification Tool  \nTechnology Brainz, Assignment 01")
 
 
 def pct(x) -> str:
@@ -55,19 +81,71 @@ def outcome_chart(rows: list[dict]) -> None:
     st.bar_chart(df[["successful", "failed"]], color=["#2e9e5b", "#d6455d"])
 
 
-def table(rows: list[dict], columns: list[str] | None = None) -> None:
-    if rows:
-        df = pd.DataFrame(rows)
-        if columns:
-            df = df[[c for c in columns if c in df.columns]]      # tolerate absent columns
-        st.dataframe(df, hide_index=True)
-    else:
+def header(title: str, subtitle: str) -> None:
+    st.title(title)
+    st.caption(subtitle)
+
+
+def demo_links() -> None:
+    """Links to the local provider demo pages that hand out real test tokens."""
+    cols = st.columns(3)
+    for col, (label, slug) in zip(cols, [("reCAPTCHA demo page", "recaptcha"), ("hCaptcha demo page", "hcaptcha"),
+                                         ("Turnstile demo page", "turnstile")]):
+        col.link_button(label, f"{api.base}/demo/{slug}.html", use_container_width=True)
+
+
+PAGE_SIZES = [10, 25, 50]
+HEADINGS = {"id": "ID", "ms": "ms", "cost_usd": "Cost (USD)", "http_status": "HTTP", "p50": "p50", "p95": "p95"}
+
+
+def _heading(name: str) -> str:
+    return HEADINGS.get(name) or name.replace("_", " ").capitalize()
+
+
+@st.fragment
+def _paged(df: pd.DataFrame, key: str) -> None:
+    """A compact table with a rows-per-page selector and Previous/Next. A fragment, so changing the page re-runs only
+    this table and does not call the API again."""
+    size_key, page_key = f"tbl_{key}_size", f"tbl_{key}_page"
+    n = len(df)
+    size = int(st.session_state.get(size_key, PAGE_SIZES[0]))
+    pages = max(1, -(-n // size))
+    page = min(max(int(st.session_state.get(page_key, 1)), 1), pages)
+    st.session_state[page_key] = page
+
+    start = (page - 1) * size
+    st.dataframe(df.iloc[start:start + size], hide_index=True)
+
+    def go(delta: int) -> None:
+        st.session_state[page_key] = min(max(st.session_state[page_key] + delta, 1), pages)
+
+    info, per, prev, label, nxt = st.columns([2.4, 1.3, 0.9, 1.1, 0.9], vertical_alignment="center")
+    info.caption(f"Rows {start + 1}-{min(start + size, n)} of {n}")
+    per.selectbox("Rows per page", PAGE_SIZES, key=size_key, label_visibility="collapsed",
+                  format_func=lambda s: f"{s} per page")
+    prev.button("Previous", key=f"tbl_{key}_prev", on_click=go, args=(-1,), disabled=page <= 1, use_container_width=True)
+    label.markdown(f"<div style='text-align:center'>Page {page} / {pages}</div>", unsafe_allow_html=True)
+    nxt.button("Next", key=f"tbl_{key}_next", on_click=go, args=(1,), disabled=page >= pages, use_container_width=True)
+
+
+def table(rows: list[dict], columns: list[str] | None = None, key: str | None = None) -> None:
+    """Show rows as a table. Pass `key` for lists that can grow long: they are paged instead of scrolling forever."""
+    if not rows:
         st.caption("Nothing recorded yet.")
+        return
+    df = pd.DataFrame(rows)
+    if columns:
+        df = df[[c for c in columns if c in df.columns]]          # tolerate absent columns
+    df = df.rename(columns=_heading)
+    if key and len(df) > PAGE_SIZES[0]:
+        _paged(df, key)
+    else:
+        st.dataframe(df, hide_index=True)
 
 
 # ── Overview ─────────────────────────────────────────────────────────────────
 def overview() -> None:
-    st.title("Overview")
+    header("Overview", "Live totals from the API's database: solve attempts, token verifications and the site benchmark.")
     res = api.stats()
     if api_problem(res):
         return
@@ -89,14 +167,18 @@ def overview() -> None:
     c[4].metric("Total cost", usd(a["total_cost_usd"]))
 
     left, right = st.columns(2)
-    with left:
-        st.caption("By challenge type")
+    with left, st.container(border=True):
+        st.caption("Outcomes by challenge type")
         if a["by_type"]:
             outcome_chart(a["by_type"])
-    with right:
-        st.caption("By method")
+        else:
+            st.caption("Nothing recorded yet.")
+    with right, st.container(border=True):
+        st.caption("Outcomes by method")
         if a["by_method"]:
             outcome_chart(a["by_method"])
+        else:
+            st.caption("Nothing recorded yet.")
 
     st.subheader("Solvers and cost")
     sv = api.solvers()
@@ -124,18 +206,17 @@ def overview() -> None:
         st.bar_chart(pd.DataFrame(v["by_reason"]).set_index("key")[["total"]])
 
     st.subheader("Recent attempts")
-    recent = api.attempts(15)
+    recent = api.attempts(200)
     if recent.ok:
+        st.caption("Newest first, up to the latest 200.")
         table(recent.data["items"], ["id", "challenge_type", "method", "predicted", "expected",
-                                     "success", "confidence", "processing_ms", "cost_usd", "error"])
+                                     "success", "confidence", "processing_ms", "cost_usd", "error"], key="attempts")
 
     st.subheader("Site detection benchmark")
     st.caption(f"{s['total']} sites imported, {s['scanned']} analysed. The Sites page has the accuracy report.")
-    st.markdown(
-        "**Provider demo pages** (obtain real test tokens, then verify them on the Verify page): "
-        f"[reCAPTCHA]({api.base}/demo/recaptcha.html) · [hCaptcha]({api.base}/demo/hcaptcha.html) · "
-        f"[Turnstile]({api.base}/demo/turnstile.html)"
-    )
+    st.subheader("Provider demo pages")
+    st.caption("Obtain a real test token from a provider's widget, then verify it on the Verify page.")
+    demo_links()
 
 
 # ── Solve ────────────────────────────────────────────────────────────────────
@@ -181,49 +262,59 @@ def render_solve(res: ApiResult, expected: str | None) -> None:
 
 
 def solve_page() -> None:
-    st.title("Solve a CAPTCHA")
+    header("Solve a CAPTCHA", "Classify an image, run the solver chain and see every step: type, method, confidence, time and cost.")
+    image, name, expected, challenge = None, "challenge.png", "", None
     source = st.radio("Image source", ["Upload", "Held-out sample", "Math sample", "Unsupported sample (grid)"],
                       horizontal=True, key="solve_source")
-    image, name, expected, challenge = None, "challenge.png", "", None
+    controls, preview = st.columns([1.3, 1], gap="large")
 
-    if source == "Upload":
-        up = st.file_uploader("Challenge image", type=["png", "jpg", "jpeg", "bmp", "webp"], key="solve_upload")
-        if up:
-            image, name = up.getvalue(), up.name
-        expected = st.text_input("Expected answer (optional, to measure accuracy)", key="solve_expected_up")
-    elif source == "Held-out sample":
-        options = samples.test_samples()
-        if not options:
-            st.info("No generated dataset found. Run `python ml/generate_dataset.py` first.")
+    with controls:
+        if source == "Upload":
+            up = st.file_uploader("Challenge image", type=["png", "jpg", "jpeg", "bmp", "webp"], key="solve_upload")
+            if up:
+                image, name = up.getvalue(), up.name
+            expected = st.text_input("Expected answer (optional, to measure accuracy)", key="solve_expected_up")
+        elif source == "Held-out sample":
+            options = samples.test_samples()
+            if not options:
+                st.info("No generated dataset found. Run `python ml/generate_dataset.py` first.")
+            else:
+                pick = st.selectbox("Sample (never seen in training)", options, format_func=lambda o: o[0], key="solve_pick")
+                mode = st.selectbox("Degrade the image", samples.DEGRADATIONS, key="solve_degrade",
+                                    help="Shows how the quality gates and the pipeline react to bad input")
+                image, name, expected = samples.degrade(samples.load_sample(pick[0]), mode), pick[0], pick[1]
+        elif source == "Math sample":
+            seed = st.number_input("Seed", 0, 10_000, 1, key="solve_seed")
+            image, expr, answer = samples.math_sample(int(seed))
+            name, expected = "math.png", str(answer)
+            st.caption(f"Generated expression: {expr}")
         else:
-            pick = st.selectbox("Sample (never seen in training)", options, format_func=lambda o: o[0], key="solve_pick")
-            mode = st.selectbox("Degrade the image", samples.DEGRADATIONS, key="solve_degrade",
-                                help="Shows how the quality gates and the pipeline react to bad input")
-            image, name, expected = samples.degrade(samples.load_sample(pick[0]), mode), pick[0], pick[1]
-    elif source == "Math sample":
-        seed = st.number_input("Seed", 0, 10_000, 1, key="solve_seed")
-        image, expr, answer = samples.math_sample(int(seed))
-        name, expected = "math.png", str(answer)
-        st.caption(f"Generated expression: {expr}")
-    else:
-        image, name = samples.grid_sample(), "grid.png"
+            image, name = samples.grid_sample(), "grid.png"
+            st.caption("A 3x3 image grid: classified as unsupported and never sent to a solver.")
 
-    override = st.selectbox("Challenge type", ["auto-detect", "text", "math"], key="solve_type")
-    challenge = None if override == "auto-detect" else override
+        override = st.selectbox("Challenge type", ["auto-detect", "text", "math"], key="solve_type")
+        challenge = None if override == "auto-detect" else override
 
-    allow_external = True
-    sv = api.solvers()
-    vision = next((s for s in sv.data.get("solvers", []) if s["name"] == "vision_api"), None) if sv.ok else None
-    if vision and vision.get("enabled"):
-        allow_external = st.checkbox(
-            f"Allow the paid {vision['provider']} vision solver as a last resort (the image is sent to the provider)",
-            value=True, key="solve_external")
-    elif vision:
-        st.caption(f"Third-party vision solver: off ({vision.get('reason')}). Everything stays local and free.")
+        allow_external = True
+        sv = api.solvers()
+        vision = next((s for s in sv.data.get("solvers", []) if s["name"] == "vision_api"), None) if sv.ok else None
+        if vision and vision.get("enabled"):
+            allow_external = st.checkbox(
+                f"Allow the paid {vision['provider']} vision solver as a last resort (the image is sent to the provider)",
+                value=True, key="solve_external")
+        elif vision:
+            st.caption(f"Third-party vision solver: off ({vision.get('reason')}). Everything stays local and free.")
 
-    if image:
-        st.image(image, caption=name, width=360)
-    if st.button("Solve", type="primary", disabled=image is None, key="solve_go"):
+        go = st.button("Solve", type="primary", disabled=image is None, key="solve_go")
+
+    with preview:
+        if image:
+            with st.container(border=True):
+                st.image(image, caption=name, width="stretch")
+        else:
+            st.caption("Choose or upload an image to preview it here.")
+
+    if go:
         with st.spinner("Solving..."):
             st.session_state["solve_result"] = (
                 api.solve(image, name, expected or None, challenge, allow_external), expected or None)
@@ -246,30 +337,31 @@ VERDICT_TEXT = {
 
 
 def verify_page() -> None:
-    st.title("Verify a provider token")
-    st.markdown(
-        "Get a token from a provider's **test** widget on a local demo page "
-        f"([reCAPTCHA]({api.base}/demo/recaptcha.html) · [hCaptcha]({api.base}/demo/hcaptcha.html) · "
-        f"[Turnstile]({api.base}/demo/turnstile.html)), or use the published test tokens below. "
-        "Or run `python scripts/acquire_token.py --provider recaptcha --replay` to do it end to end."
-    )
+    header("Verify a provider token",
+           "Server-side check of a token against the provider's siteverify endpoint. Test keys only; the token is never stored or logged.")
+    st.caption("Get a token from a provider's test widget:")
+    demo_links()
+    st.caption("or fill in a published test value, or run `python scripts/acquire_token.py --provider recaptcha --replay` "
+               "to do it end to end.")
     col = st.columns(3)
     col[0].button("Use Turnstile test token", on_click=lambda: st.session_state.update(
-        vtoken="XXXX.DUMMY.TOKEN.XXXX", vprovider="turnstile"))
+        vtoken="XXXX.DUMMY.TOKEN.XXXX", vprovider="turnstile"), use_container_width=True)
     col[1].button("Use hCaptcha test token", on_click=lambda: st.session_state.update(
-        vtoken="10000000-aaaa-bbbb-cccc-000000000001", vprovider="hcaptcha"))
-    col[2].button("Use a nonsense token", on_click=lambda: st.session_state.update(vtoken="FAKE-TOKEN"))
+        vtoken="10000000-aaaa-bbbb-cccc-000000000001", vprovider="hcaptcha"), use_container_width=True)
+    col[2].button("Use a nonsense token", on_click=lambda: st.session_state.update(vtoken="FAKE-TOKEN"),
+                  use_container_width=True)
 
-    provider = st.selectbox("Provider", ["recaptcha", "hcaptcha", "turnstile"], key="vprovider")
-    token = st.text_input("Token", type="password", key="vtoken",
-                          help="Sent to the API and verified server-side; only a fingerprint is stored")
-    opt = st.columns(2)
-    max_age = opt[0].number_input("Max token age (s), 0 = default", 0, 86_400, 0, key="vage")
-    scenario = None
-    if provider == "turnstile":
-        label = opt[1].selectbox("Turnstile dummy secret", ["configured secret", "pass", "fail", "spent"], key="vscenario",
-                                 help="Published Cloudflare test secrets: always pass / always fail / duplicate token")
-        scenario = None if label == "configured secret" else label
+    with st.container(border=True):
+        provider = st.selectbox("Provider", ["recaptcha", "hcaptcha", "turnstile"], key="vprovider")
+        token = st.text_input("Token", type="password", key="vtoken",
+                              help="Sent to the API and verified server-side; only a fingerprint is stored")
+        opt = st.columns(2)
+        max_age = opt[0].number_input("Max token age (s), 0 = default", 0, 86_400, 0, key="vage")
+        scenario = None
+        if provider == "turnstile":
+            label = opt[1].selectbox("Turnstile dummy secret", ["configured secret", "pass", "fail", "spent"], key="vscenario",
+                                     help="Published Cloudflare test secrets: always pass / always fail / duplicate token")
+            scenario = None if label == "configured secret" else label
 
     if st.button("Verify", type="primary", key="verify_go"):
         with st.spinner("Calling the provider's siteverify..."):
@@ -293,15 +385,16 @@ def verify_page() -> None:
                 st.info("Retrying is possible.")
 
     st.subheader("Recent verifications")
-    recent = api.verifications(20)
+    recent = api.verifications(200)
     if recent.ok:
-        table(recent.data["items"], ["id", "provider", "ok", "reason", "http_status", "latency_ms", "token_fingerprint"])
+        table(recent.data["items"], ["id", "provider", "ok", "reason", "http_status", "latency_ms", "token_fingerprint"],
+              key="verifications")
 
 
 # ── Detect ───────────────────────────────────────────────────────────────────
 def detect_page() -> None:
-    st.title("Detect the CAPTCHA provider on a page")
-    st.caption("Paste page HTML or pick a fixture. Static analysis only: nothing is fetched or interacted with.")
+    header("Detect the CAPTCHA provider on a page",
+           "Paste page HTML or pick a fixture. Static analysis only: nothing is fetched or interacted with.")
     mode = st.radio("Input", ["Fixture", "Paste HTML", "Upload file"], horizontal=True, key="detect_mode")
     html = ""
     if mode == "Fixture":
@@ -335,9 +428,10 @@ def detect_page() -> None:
         c[1].metric("Variant", d.get("variant") or "n/a")
         c[2].metric("Confidence", f"{d['confidence']:.0%}")
         c[3].metric("Benchmark label", d["csv_label"])
-        st.write("Sitekey:", d.get("sitekey") or "not found")
+        st.caption(f"Sitekey: {d.get('sitekey') or 'not found'}")
         if d.get("evidence"):
-            table(d["evidence"], ["kind", "weight", "detail"])
+            st.caption("Evidence")
+            table(d["evidence"], ["kind", "weight", "detail"], key="evidence")
         if d.get("others"):
             st.caption("Other providers on the same page")
             table(d["others"])
@@ -368,11 +462,11 @@ def render_batch(d: dict) -> None:
         table([{"reason": k, "count": v} for k, v in d["by_error"].items()])
     if d["worst"]:
         st.caption("Wrong answers, most confident first")
-        table(d["worst"])
+        table(d["worst"], key="worst")
 
 
 def batch_page() -> None:
-    st.title("Batch accuracy")
+    header("Batch accuracy", "Run the solver over a labelled dataset or your own images and measure accuracy, coverage and latency.")
     ds = api.batch_datasets()
     if api_problem(ds):
         return
@@ -410,15 +504,16 @@ def batch_page() -> None:
         if up.ok:
             render_batch(up.data)
             st.caption("Per-image results")
-            table(up.data["results"], ["name", "expected", "predicted", "type", "accepted", "confidence", "ms", "error"])
+            table(up.data["results"], ["name", "expected", "predicted", "type", "accepted", "confidence", "ms", "error"],
+                  key="batch_results")
         else:
             st.error(f"{up.data.get('reason')}: {up.data.get('detail') or up.data.get('errors')}")
 
     st.subheader("History")
-    runs = api.batch_runs(15)
+    runs = api.batch_runs(100)
     if runs.ok:
         table(runs.data["items"], ["id", "created_at", "dataset", "n", "exact_match", "char_accuracy",
-                                   "mean_confidence", "latency_p50_ms", "latency_p95_ms"])
+                                   "mean_confidence", "latency_p50_ms", "latency_p95_ms"], key="batch_history")
 
 
 # ── Sites ────────────────────────────────────────────────────────────────────
@@ -445,7 +540,8 @@ def render_scan_status() -> None:
 
 
 def sites_page() -> None:
-    st.title("Site detection benchmark")
+    header("Site detection benchmark",
+           "Read-only detection of the CAPTCHA provider on the supplied contact pages, scored against the CSV labels.")
     st.info(
         "**Read-only.** The scan makes one plain GET of each contact page (plus that site's robots.txt, which it obeys) "
         "and analyses the returned HTML. It never fills a field, submits a form, solves a challenge, requests a token, "
@@ -466,7 +562,7 @@ def sites_page() -> None:
             st.success(f"Imported: {d['inserted']} new, {d['updated']} updated, {d['unchanged']} unchanged; "
                        f"{d['rows_rejected']} rows rejected.")
             if d["errors"]:
-                table(d["errors"])
+                table(d["errors"], key="import_errors")
         else:
             st.error(f"{d.get('reason')}: {d.get('detail')}")
 
@@ -519,18 +615,19 @@ def sites_page() -> None:
     table([{"class": k, **v} for k, v in r["per_class_exact"].items()])
     if r["mismatches"]:
         st.caption(f"Mismatches (first {len(r['mismatches'])})")
-        table(r["mismatches"], ["company", "contact_page", "label", "detected", "variant", "needs_render", "family_ok"])
+        table(r["mismatches"], ["company", "contact_page", "label", "detected", "variant", "needs_render", "family_ok"],
+              key="mismatches")
 
     st.subheader("All sites")
     f = st.columns(3)
     status_f = f[0].selectbox("Scan outcome", ["any", "ok", "unscanned", *sorted(r["scan_status"])], key="sites_status")
     label_f = f[1].selectbox("Label", ["any", *labels[:-1]], key="sites_label")
     mism = f[2].checkbox("Mismatches only", key="sites_mismatch")
-    lst = api.sites_list(100, None if status_f == "any" else status_f, None if label_f == "any" else label_f, mism)
+    lst = api.sites_list(200, None if status_f == "any" else status_f, None if label_f == "any" else label_f, mism)
     if lst.ok:
-        st.caption(f"{lst.data['total']} matching sites (showing up to 100)")
+        st.caption(f"{lst.data['total']} matching sites")
         table(lst.data["items"], ["company", "contact_page", "label", "scan_status", "detected", "variant",
-                                  "needs_render", "http_status", "scan_ms", "error"])
+                                  "needs_render", "http_status", "scan_ms", "error"], key="sites_list")
 
 
 {
