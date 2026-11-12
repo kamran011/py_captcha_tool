@@ -10,12 +10,12 @@ Measured on this project (synthetic data and test keys); every figure can be rep
 
 | | |
 |---|---|
-| Text CAPTCHA solver, 1,000 held-out images | **97.4% exact match**, 99.3% character accuracy, p50 / p95 3.7 / 5.0 ms, **$0** per image |
+| Text CAPTCHA solver, 1,000 held-out images | **98.1% exact match**, 99.6% character accuracy, p50 / p95 3.3 / 4.7 ms, **$0** per image |
 | Math CAPTCHA solver, 300 images | 99.7% |
 | Token verification | real provider test endpoints: Turnstile, hCaptcha, reCAPTCHA; replay, missing, malformed, invalid, expired, provider-down each return a distinct structured result |
 | Provider detection on the 200 supplied sites | **87 of 200 analysed** (the rest refused automated clients, mostly HTTP 403); provider-level accuracy 77.0% on those 87, precision 100% |
 | Optional third-party vision solver | built, off by default, cost priced from token usage; **not yet run against the real provider** (no key was available) |
-| Tests | 508 pass offline; 7 opt-in live tests |
+| Tests | 513 pass offline; 7 opt-in live tests |
 
 ## Quick start
 
@@ -51,7 +51,7 @@ python scripts/smoke_test.py --online
 
 Open the dashboard at http://127.0.0.1:8501, the interactive API docs at http://127.0.0.1:8000/docs, and the local demo pages at `/demo/recaptcha.html`, `/demo/hcaptcha.html`, `/demo/turnstile.html`. The first solve after start-up is slower (about half a second: it loads the model).
 
-`--train 0` skips the 20,000-image training split; the test and validation splits are seeded, so they are identical on every machine and the reported accuracy reproduces. Without step 4 the tool still runs; the sample pickers, batch, calibration and the full test suite need the datasets.
+`--train 0` skips the 20,000-image training split. The validation and test splits are generated from fixed seeds and come out byte-identical on every run, so the reported accuracy reproduces (two earlier, unseeded draws of the same generator scored 97.3-97.4%, so read it as roughly 97-98%; rendering may differ slightly across Pillow versions, which `requirements-lock.txt` pins). Without step 4 the tool still runs; the sample pickers, batch, calibration and the full test suite need the datasets.
 
 ## What it does
 
@@ -109,7 +109,7 @@ pip install -r requirements-train.txt && python ml/generate_dataset.py && python
 ## Tests
 
 ```bash
-pytest tests -q                                          # 508 tests, offline and deterministic (about 40 s with the datasets)
+pytest tests -q                                          # 513 tests, offline and deterministic (about 40 s with the datasets)
 RUN_LIVE=1 pytest tests/test_live_providers.py -v        # also calls the providers' real test endpoints (test keys only)
 RUN_LIVE=1 pytest tests/test_live_vision.py -v           # needs VISION_API_KEY; spends a few cents
 ```

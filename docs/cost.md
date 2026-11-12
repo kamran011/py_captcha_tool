@@ -6,9 +6,9 @@ Each number is tagged by how it is known: **measured** (run on this project), **
 
 | Method | Marginal cost per challenge | Basis |
 |---|---|---|
-| Local text solver (CRNN on ONNX Runtime) | **$0** (about 3.7 ms of CPU) | measured: p50 3.7 ms, p95 5.0 ms over 1,000 images, CPU only |
+| Local text solver (CRNN on ONNX Runtime) | **$0** (about 3.3 ms of CPU) | measured: p50 3.3 ms, p95 4.7 ms over 1,000 images, CPU only |
 | Segmentation + kNN fallback | **$0** | measured, same run |
-| Math solver | **$0** (about 2.7 ms) | measured over 300 images |
+| Math solver | **$0** (about 2.4 ms) | measured over 300 images |
 | Optional vision API, `claude-haiku-5-5` | about **$0.00003** per call | **estimate**, see below; actual figure appears per call once enabled |
 | Token verification | **$0** here | only the providers' published test keys were used; production pricing and quotas are each provider's own and are not priced in this project |
 | Site detection scan | **$0** | plain GETs of public pages |
@@ -38,10 +38,10 @@ The solver only runs after the local models fail to give an accepted answer (abo
 
 | Volume | Local model | Vision API (estimate) | Commercial solving service (quoted, see below) |
 |---|---|---|---|
-| 1,000 images | about 4 s CPU, $0 | about $0.03 | $0.50 - $1.00 |
+| 1,000 images | about 3 s CPU, $0 | about $0.03 | $0.50 - $1.00 |
 | 1,000,000 images | about 1 CPU-hour, $0 | about $28 | $500 - $1,000 |
 
-CPU time is 3.7 ms x volume on one thread of the development machine; the vision column applies the estimate above. One-off cost to produce the local model: about 45 minutes of CPU for training (20 epochs of roughly 2 minutes) plus generating the dataset; the trained 4 MB model ships in the repository, so a reviewer does not repeat it.
+CPU time is 3.3 ms x volume on one thread of the development machine; the vision column applies the estimate above. One-off cost to produce the local model: about 45 minutes of CPU for training (20 epochs of roughly 2 minutes) plus generating the dataset; the trained 4 MB model ships in the repository, so a reviewer does not repeat it.
 
 ## Commercial solving services, for context only
 
@@ -56,6 +56,6 @@ CapSolver was also checked but its pricing pages returned HTTP 404, so it is omi
 
 ## Reading the table
 
-- For the synthetic style this project is built for, the local model is both the cheapest (no marginal cost) and measurably accurate (97.4% exact match), but it only exists for that style: a different CAPTCHA design would need a new dataset and training run.
+- For the synthetic style this project is built for, the local model is both the cheapest (no marginal cost) and measurably accurate (98.1% exact match), but it only exists for that style: a different CAPTCHA design would need a new dataset and training run.
 - The vision API is the flexible option and still cheap per call, but it sends images to a third party, its accuracy here is unmeasured, and its confidence is uncalibrated until `ml/calibrate.py --vision N` is run.
 - For image CAPTCHAs the quoted commercial prices are roughly 18 to 36 times the vision estimate ($0.50 - $1.00 per 1,000 against about $0.028), and they are outside the project's scope.

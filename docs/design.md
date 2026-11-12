@@ -119,7 +119,8 @@ A vision-capable LLM can read the CAPTCHA text as the **last tier** of the text 
 ### Batch accuracy
 - Datasets are **named folders** under `data/synthetic/` (`test`, `val`, `train`, `math_test`); callers never pass a path, names are matched against `^[A-Za-z0-9_-]{1,40}$` and the resolved folder must be a direct child of the root, and `labels.csv` entries that point outside the folder are skipped. `train` is flagged as optimistic.
 - Metrics: exact match, **character accuracy (1 - edit distance / length, floored at 0)**, mean confidence, coverage (accepted answers), precision when accepted, confident-wrong count, latency p50/p95, per-type accuracy, unanswered reasons, and the most-confident wrong answers. Limits: 1000 images per dataset run, 100 per upload, 60 s time budget (partial results are flagged `truncated`). A batch holds one solver slot while it runs; dataset runs are stored in `batch_runs`, per-image rows are only returned for uploads.
-- Measured: `test` (1000 images) exact 97.4 %, character accuracy 99.32 %, 23 confident-wrong, p50/p95 3.7/5.0 ms; `math_test` (300) exact 99.67 %.
+- Measured (`data/models/pipeline_report.json`): `test` (1000 images) exact **98.1 %**, character accuracy 99.6 %, 18 confident-wrong, p50/p95 3.3/4.7 ms; `val` 97.7 %; `math_test` (300) 99.67 %.
+- **Reproducibility:** the datasets are generated from fixed seeds and are byte-identical on every run in one environment. This needed a fix: the `captcha` library draws its randomness from the `secrets` module (the OS CSPRNG), which cannot be seeded, so the generator swaps in a seeded stand-in while generating. Before the fix, regenerating gave different images (the labels matched, the pixels did not); two earlier draws of the same generator scored 97.4 % and 97.3 % against 98.1 % on the fixed split, so read the accuracy as roughly 97-98 %. Rendering can differ slightly across Pillow/FreeType versions (`requirements-lock.txt` pins the ones used), and retraining on a fresh training split gives a similar, not identical, model.
 
 ### CSV import
 Per-row validation with line numbers (never aborts the file): http/https only, real hostname, no credentials, no whitespace or control characters, port 80/443 only, <= 2048 chars, duplicates rejected; `Sioux 20Falls`-style cells repaired; idempotent upsert on the contact URL (scan results are kept). The bundled `data/sites.csv` imports 200 rows with 0 rejected.
@@ -181,16 +182,16 @@ Status key: **built** (tested), **M5** (API layer, not yet built), **limit** (kn
 | Blank / flat / near-flat | `poor_quality: blank_or_flat` (intensity range < 20) |
 | Pure noise | Rejected by the classifier ("too cluttered") or `poor_quality: excessive_noise` |
 | Blurry (sigma >= ~1.2) | `poor_quality: too_blurry`. Gate: Laplacian variance / pixel variance < 0.09 |
-| Low contrast | Contrast-stretched only when intensity range < 62; 25% -> 84% exact-match at half contrast. Stretching normal images costs 15 points, so it is conditional |
+| Low contrast | Contrast-stretched only when intensity range < 62. Through the full pipeline at half contrast (n = 300): 61.7% answered correctly and accepted, against 25.7% for the raw model; **25.7% are still accepted with a wrong answer**. Stretching normal images costs 15 points, so it is conditional |
 | Grid / photo / slider strip | `unsupported_challenge`; never reaches a solver. Size and aspect rules catch large images and strips; grids are found by long straight interior lines (morphological opening), which also works on textured photo backgrounds where edge-density tests fail. **Limits:** a 2x2 grid (one interior separator per direction) is not caught, and a plain frame around text is deliberately not treated as a grid. Audio challenges are not images and fail as `invalid_image` |
 | Confident garbage output | `degenerate_output` (one repeated letter, the CRNN's sink mode) and `implausible_length` fall through |
 | Any unexpected exception | `internal_error`; the pipeline never raises |
 
 Thresholds are measured on generated data, so they describe this generator, not CAPTCHAs in general.
 
-**Confidence is not a reliable error signal.** Wrong CRNN answers have median mean-confidence 0.97 versus 0.9998 for right ones; raising the threshold to 0.99 drops 16% of images and moves test precision only 97.4% -> 98.7%. So per-solver thresholds are derived from validation precision (`ml/calibrate.py`): the CRNN keeps the 0.6 floor; the segmentation solver never reaches 90% precision at any threshold and is **advisory-only** (reported, never self-accepted).
+**Confidence is not a reliable error signal.** Wrong CRNN answers have median mean-confidence 0.994 versus 0.9998 for right ones; raising the threshold to 0.99 drops 18% of images and moves test precision only 98.1% -> 98.8%. So per-solver thresholds are derived from validation precision (`ml/calibrate.py`): the CRNN keeps the 0.6 floor; the segmentation solver never reaches 90% precision at any threshold and is **advisory-only** (reported, never self-accepted).
 
-**limit:** out-of-distribution but normal-looking input is accepted with wrong text: 90-degree-rotated 23/60, mirrored 59/60 (inverted is caught, 0/60). No quality statistic distinguishes these.
+**limit:** out-of-distribution but normal-looking input is accepted with wrong text: 90-degree-rotated 19/60, mirrored 58/60 (inverted is caught, 0/60). No quality statistic distinguishes these.
 
 ### Token verification (built in M4; endpoints, error codes and lifetimes checked against each provider's docs)
 

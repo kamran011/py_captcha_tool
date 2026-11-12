@@ -1,71 +1,71 @@
 {
   "split": "test",
   "n": 1000,
-  "exact_match": 0.974,
-  "char_accuracy": 0.9953,
-  "mean_confidence": 0.9916,
-  "latency_ms_p50": 1.36,
-  "latency_ms_p95": 1.68,
+  "exact_match": 0.981,
+  "char_accuracy": 0.9968,
+  "mean_confidence": 0.9899,
+  "latency_ms_p50": 1.49,
+  "latency_ms_p95": 1.82,
   "sample_errors": [
     {
-      "file": "000035.png",
-      "truth": "TAN9K",
-      "pred": "TAV9K",
-      "conf": 0.936
-    },
-    {
-      "file": "000039.png",
-      "truth": "TQ8KKS",
-      "pred": "TQ8KAS",
-      "conf": 0.954
-    },
-    {
-      "file": "000041.png",
-      "truth": "9DEUTA",
-      "pred": "9DEUA",
-      "conf": 1.0
-    },
-    {
-      "file": "000109.png",
-      "truth": "QVYRDH",
-      "pred": "QVRDH",
-      "conf": 1.0
-    },
-    {
-      "file": "000151.png",
-      "truth": "J2DEHX",
-      "pred": "J2DHX",
-      "conf": 0.943
-    },
-    {
-      "file": "000187.png",
-      "truth": "ATHBV8",
-      "pred": "ATBV8",
-      "conf": 0.995
-    },
-    {
-      "file": "000201.png",
-      "truth": "WY3ZXP",
-      "pred": "W3ZXP",
-      "conf": 0.998
-    },
-    {
-      "file": "000216.png",
-      "truth": "KQKH8Q",
-      "pred": "KCKH8Q",
-      "conf": 0.983
-    },
-    {
-      "file": "000232.png",
-      "truth": "AYHK9",
-      "pred": "AYHV9",
+      "file": "000006.png",
+      "truth": "KH4M26",
+      "pred": "KH4MD6",
       "conf": 0.999
     },
     {
-      "file": "000292.png",
-      "truth": "LUDD",
-      "pred": "LUUDD",
-      "conf": 0.898
+      "file": "000010.png",
+      "truth": "3RJXMN",
+      "pred": "3RXMN",
+      "conf": 0.94
+    },
+    {
+      "file": "000028.png",
+      "truth": "CUYBT",
+      "pred": "CUVBT",
+      "conf": 0.904
+    },
+    {
+      "file": "000102.png",
+      "truth": "NZHS",
+      "pred": "NZS",
+      "conf": 1.0
+    },
+    {
+      "file": "000134.png",
+      "truth": "NSF9L",
+      "pred": "VSF9L",
+      "conf": 0.994
+    },
+    {
+      "file": "000223.png",
+      "truth": "TDSJTZ",
+      "pred": "TD5JTZ",
+      "conf": 0.948
+    },
+    {
+      "file": "000257.png",
+      "truth": "HR3J29",
+      "pred": "H3J29",
+      "conf": 1.0
+    },
+    {
+      "file": "000277.png",
+      "truth": "M5H4",
+      "pred": "ASH4",
+      "conf": 0.821
+    },
+    {
+      "file": "000281.png",
+      "truth": "EHJUR",
+      "pred": "EHUUR",
+      "conf": 0.901
+    },
+    {
+      "file": "000293.png",
+      "truth": "9ZBP2Q",
+      "pred": "9Z3P2Q",
+      "conf": 0.916
     }
   ]
 }

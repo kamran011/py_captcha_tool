@@ -49,7 +49,7 @@ Two processes: the API and the dashboard. The dashboard holds the API key server
 
 ## The four flows
 
-**Solve.** upload -> size/dimension check from the header -> classifier -> (`unsupported`: stop) -> quality gate -> solvers in order -> first answer above its calibrated threshold wins -> attempt row with every method tried, latency, cost. Math goes to the math solver only. Text goes `crnn_onnx` -> `segment_knn` (never self-accepted: measured 34% accuracy) -> `vision_api` (only if configured).
+**Solve.** upload -> size/dimension check from the header -> classifier -> (`unsupported`: stop) -> quality gate -> solvers in order -> first answer above its calibrated threshold wins -> attempt row with every method tried, latency, cost. Math goes to the math solver only. Text goes `crnn_onnx` -> `segment_knn` (never self-accepted: 30% accuracy on the held-out test split) -> `vision_api` (only if configured).
 
 **Verify.** widget on a local demo page yields a token -> `POST /verify` -> shape check -> **insert the token's SHA-256 into a UNIQUE ledger before calling the provider** (so concurrent replays cannot both reach it) -> `siteverify` with a provider-specific retry policy -> provider error codes mapped to one structured verdict (`ok`, `missing_token`, `malformed_token`, `invalid_token`, `expired_token`, `reused_token`, `provider_unavailable`, ...) with a fitting HTTP status. Tokens and secrets never reach logs, responses or the database; only a 12-character fingerprint does.
 
@@ -74,13 +74,13 @@ Two processes: the API and the dashboard. The dashboard holds the API key server
 
 | What | Result |
 |---|---|
-| Text solver, 1,000 held-out images | exact match **97.4%**, character accuracy 99.3%, 23 confident-wrong answers, p50/p95 3.7 / 5.0 ms |
+| Text solver, 1,000 held-out images | exact match **98.1%** (97.3% and 97.4% on two earlier, non-reproducible draws of the same generator, so read it as roughly 97-98%), character accuracy 99.6%, 18 confident-wrong answers, p50/p95 3.3 / 4.7 ms |
 | Math solver, 300 images | 99.7% (templates come from the same renderer, so this shows consistency, not generality) |
 | Classifier | text 1000/1000, math 299/300; grid, photo, strip and blank samples all `unsupported`; 2x2 grids are not caught |
 | Quality gates | blank, noise and heavy blur rejected; accuracy unchanged on good images |
 | Token verification (real provider test endpoints) | Turnstile pass / fail / duplicate, hCaptcha pass / invalid, reCAPTCHA pass and local replay (409) |
 | Site benchmark, 200 supplied sites | 87 analysed (43.5%); provider-level accuracy 77.0%, exact 55.2% (67.8% counting v3 as invisible, reported separately); precision 100% |
-| Tests | 508 passing offline, 7 opt-in (6 live-provider, 1 live-vision) |
+| Tests | 513 passing offline, 7 opt-in (6 live-provider, 1 live-vision) |
 
 ## Requirements coverage
 
@@ -88,7 +88,7 @@ Two processes: the API and the dashboard. The dashboard holds the API key server
 |---|---|---|
 | R1 classify image | met | `test_solvers.py` classifier tests; dashboard Solve page |
 | R2 identify provider | met | 21 fixture pages + 3 demo pages in `test_detector.py`; real pages in the site report |
-| R3 text solver >= 90% | met, **97.4% measured** | `ml/evaluate.py`, `data/models/eval_report.json`, batch page |
+| R3 text solver >= 90% | met, **98.1% measured** | `ml/evaluate.py`, `data/models/eval_report.json`, batch page |
 | R4 math | met | `math_test` 99.7%; AST-whitelist evaluation tested against injection |
 | R5 fallback chain | met | `test_solvers.py`, `test_vision.py` (every method tried is recorded) |
 | R6 third-party solver with cost | built and mock-verified; **not run against the real provider** | `test_vision.py` (101 tests); `tests/test_live_vision.py` is the opt-in live check |
@@ -103,7 +103,7 @@ Two processes: the API and the dashboard. The dashboard holds the API key server
 
 ## Known limitations
 
-- Accuracy figures describe **our synthetic generator**. Other CAPTCHA styles are untested, and a normal-looking but 90-degree-rotated or mirrored image is accepted with wrong text (23 of 60 and 59 of 60 in a test).
+- Accuracy figures describe **our synthetic generator**. Other CAPTCHA styles are untested, and a normal-looking but 90-degree-rotated or mirrored image is accepted with wrong text (19 of 60 and 58 of 60 in a test).
 - Confidence is not an error signal for the CRNN; calibration cannot remove its confident mistakes.
 - The site scan sees only what static HTML shows, and most pages refused automated clients, so its accuracy describes the cooperative minority.
 - The optional vision solver has no measured accuracy or real per-image cost yet.

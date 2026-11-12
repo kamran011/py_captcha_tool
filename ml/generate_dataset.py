@@ -54,8 +54,33 @@ def make_image(text: str, gen: ImageCaptcha, rng: random.Random) -> np.ndarray:
     return augment(arr, rng)
 
 
+class _SeededSecrets:
+    """Drop-in for the three `secrets` functions the captcha library uses, backed by a seeded RNG."""
+
+    def __init__(self, rng: random.Random) -> None:
+        self._r = rng
+
+    def randbelow(self, n: int) -> int:
+        return self._r.randrange(n)
+
+    def randbits(self, k: int) -> int:
+        return self._r.getrandbits(k)
+
+    def choice(self, seq):
+        return self._r.choice(seq)
+
+
 def generate_split(name: str, n: int, seed: int) -> None:
     rng = random.Random(seed)
+    # Make the images (not just the labels) reproducible. `captcha` 0.7 draws fonts, warps and
+    # noise from the `secrets` module (the OS CSPRNG), which cannot be seeded; older versions
+    # used the global `random`. Dataset generation swaps in a seeded stand-in, so the same seed
+    # gives byte-identical images on a given environment and the reported accuracy reproduces.
+    random.seed(seed)
+    import captcha.image as _ci
+
+    if hasattr(_ci, "secrets"):
+        _ci.secrets = _SeededSecrets(random.Random(seed))
     # Wider canvas then downscaled so strokes keep detail
     gen = ImageCaptcha(width=IMG_W * 2, height=IMG_H * 2,
                        font_sizes=(56, 64, 72))

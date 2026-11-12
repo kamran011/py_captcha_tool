@@ -96,7 +96,7 @@ def main() -> int:
         d = http.post("/api/v1/verify", json={"provider": "turnstile", "token": "XXXX.DUMMY.TOKEN.XXXX"})
         check("verify: Turnstile test token accepted (real siteverify)", d.status_code == 200 and d.json().get("ok") is True,
               f"{d.json().get('latency_ms')} ms")
-        d = http.post("/api/v1/verify", json={"provider": "hcaptcha", "token": "FAKE-TOKEN"})
+        d = http.post("/api/v1/verify", json={"provider": "hcaptcha", "token": f"FAKE-{int(time.time())}-TOKEN"})
         check("verify: hCaptcha nonsense token rejected (real siteverify)", d.status_code == 400 and d.json().get("reason") == "invalid_token")
         token = f"smoke-{int(time.time())}-token"
         first = http.post("/api/v1/verify", json={"provider": "recaptcha", "token": token})

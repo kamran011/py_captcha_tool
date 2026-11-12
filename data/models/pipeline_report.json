@@ -3,14 +3,14 @@
   "text_classified_as": {
     "text": 1000
   },
-  "pipeline_exact_match": 0.974,
-  "pipeline_accepted": 997,
-  "accepted_but_wrong": 23,
+  "pipeline_exact_match": 0.981,
+  "pipeline_accepted": 999,
+  "accepted_but_wrong": 18,
   "fallback_triggered": 1,
   "fallback_answered_correctly": 0,
-  "segment_solver_alone_exact_match": 0.337,
+  "segment_solver_alone_exact_match": 0.302,
   "latency_ms_p50": 3.34,
-  "latency_ms_p95": 4.16,
+  "latency_ms_p95": 4.69,
   "math_images": 300,
   "math_classified_as": {
     "math": 299,
