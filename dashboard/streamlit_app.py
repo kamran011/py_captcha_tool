@@ -6,6 +6,7 @@ CAPTCHA Tool dashboard (Streamlit). Talks to the FastAPI backend; run both:
 """
 from __future__ import annotations
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 
@@ -74,11 +75,30 @@ def api_problem(res: ApiResult) -> bool:
     return False
 
 
+def _bars(df: pd.DataFrame, color: alt.Color | alt.value) -> alt.Chart:
+    """Bars with horizontal category labels (st.bar_chart cannot set the label angle)."""
+    return (alt.Chart(df).mark_bar()
+            .encode(x=alt.X("key:N", sort=None, title=None, axis=alt.Axis(labelAngle=0, labelLimit=220, ticks=False)),
+                    y=alt.Y("count:Q", title=None, axis=alt.Axis(tickMinStep=1, format="d")),
+                    color=color, tooltip=["key", "series", "count"])
+            .properties(height=260))
+
+
 def outcome_chart(rows: list[dict]) -> None:
     """Stacked successful + failed, so the bar height is the total."""
-    df = pd.DataFrame(rows).set_index("key")
+    df = pd.DataFrame(rows)
     df["failed"] = df["total"] - df["successful"]
-    st.bar_chart(df[["successful", "failed"]], color=["#2e9e5b", "#d6455d"])
+    long = df.melt(id_vars="key", value_vars=["successful", "failed"], var_name="series", value_name="count")
+    scale = alt.Scale(domain=["successful", "failed"], range=["#2e9e5b", "#d6455d"])
+    st.altair_chart(_bars(long, alt.Color("series:N", scale=scale, legend=alt.Legend(title=None, orient="bottom"))),
+                    use_container_width=True)
+
+
+def count_chart(rows: list[dict]) -> None:
+    """One series of counts per key, e.g. verification outcomes."""
+    df = pd.DataFrame(rows).rename(columns={"total": "count"})
+    df["series"] = "total"
+    st.altair_chart(_bars(df, alt.value("#7cc4ff")), use_container_width=True)
 
 
 def header(title: str, subtitle: str) -> None:
@@ -203,7 +223,7 @@ def overview() -> None:
     c[3].metric("Latency p50", ms(v["latency_ms"]["p50"]))
     if v["by_reason"]:
         st.caption("Outcomes")
-        st.bar_chart(pd.DataFrame(v["by_reason"]).set_index("key")[["total"]])
+        count_chart(v["by_reason"])
 
     st.subheader("Recent attempts")
     recent = api.attempts(200)
@@ -239,8 +259,9 @@ def render_solve(res: ApiResult, expected: str | None) -> None:
     else:
         st.warning(f"No answer accepted: {problem}. Best candidate: {d.get('text')!r}")
 
-    c = st.columns([1, 1.7, 1, 1, 1])
-    c[0].metric("Challenge type", d.get("challenge_type", "n/a"), f"{d.get('classifier_confidence', 0):.0%} sure")
+    c = st.columns([1.7, 1.4, 1, 1, 1])
+    c[0].metric("Challenge type", f"{d.get('challenge_type', 'n/a')} · {d.get('classifier_confidence', 0):.0%}",
+                help="The classifier's guess, then how sure it is. Kept on one line so all five cards have the same height.")
     c[1].metric("Method", d.get("method") or "none")
     c[2].metric("Confidence", f"{d.get('confidence', 0):.1%}")
     c[3].metric("Time", ms(d.get("total_ms")))
