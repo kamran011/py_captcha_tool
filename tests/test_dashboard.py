@@ -58,7 +58,11 @@ def fake_api(monkeypatch):
 def run_page(page: str) -> AppTest:
     at = AppTest.from_file(APP, default_timeout=30).run()
     if page != "Overview":
-        at.sidebar.radio[0].set_value(page).run()
+        # Navigate via the sidebar navigation buttons (st.navigation creates buttons for each page)
+        # Find and click the button with the page title
+        buttons = [btn for btn in at.sidebar.buttons if btn.label == page]
+        if buttons:
+            buttons[0].click().run()
     return at
 
 

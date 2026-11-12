@@ -38,20 +38,19 @@ h3 { font-size: 1.1rem !important; font-weight: 600; margin-top: 1.4rem !importa
 [data-testid="stMetricValue"], [data-testid="stMetricValue"] * { font-size: 1.45rem !important; line-height: 1.3;
     white-space: normal !important; overflow-wrap: anywhere; }
 [data-testid="stCaptionContainer"] { opacity: .8; }
-[data-testid="stSidebar"] [data-testid="stRadio"] label { padding: .15rem 0; }
+/* A checkbox is shorter than a dropdown; lift it so their midlines match when bottom-aligned. */
+.st-key-sites_mismatch { margin-bottom: 0.875rem; }
 </style>
 """
 st.markdown(STYLE, unsafe_allow_html=True)
 
 with st.sidebar:
     st.markdown("### :lock: CAPTCHA Tool")
-    page = st.radio("Navigate", PAGES, key="page", label_visibility="collapsed")
     health = api.health()
     if health.ok:
         st.success("API online")
     else:
         st.error("API offline")
-    st.caption("CAPTCHA Solving & Verification Tool  \nTechnology Brainz, Assignment 01")
 
 
 def pct(x) -> str:
@@ -146,7 +145,9 @@ def _paged(df: pd.DataFrame, key: str) -> None:
     per.selectbox("Rows per page", PAGE_SIZES, key=size_key, label_visibility="collapsed",
                   format_func=lambda s: f"{s} per page")
     prev.button("Previous", key=f"tbl_{key}_prev", on_click=go, args=(-1,), disabled=page <= 1, use_container_width=True)
-    label.markdown(f"<div style='text-align:center'>Page {page} / {pages}</div>", unsafe_allow_html=True)
+    # Flex row the height of a button, so the text centres on the buttons' midline (markdown adds paragraph margins).
+    label.markdown(f"<div style='display:flex;align-items:center;justify-content:center;height:2.5rem;margin:0 0 1rem'>"
+                   f"Page {page} / {pages}</div>", unsafe_allow_html=True)
     nxt.button("Next", key=f"tbl_{key}_next", on_click=go, args=(1,), disabled=page >= pages, use_container_width=True)
 
 
@@ -595,7 +596,9 @@ def sites_page() -> None:
         "Results are compared with the CSV's labelled `Captcha` column.")
 
     st.subheader("1. Import")
-    cols = st.columns(2)
+    cols = st.columns(2, vertical_alignment="top")
+    cols[0].markdown('<div style="margin:0;height:3rem;line-height:3rem"><b>Bundled dataset</b></div>',
+                     unsafe_allow_html=True)   # same label row height as the uploader's label, so the controls line up
     if cols[0].button("Import the bundled CSV (200 sites)", key="sites_import_bundled", use_container_width=True):
         with st.spinner("Importing..."):
             st.session_state["sites_import"] = api.sites_import()
@@ -614,7 +617,7 @@ def sites_page() -> None:
             table(imp.data["errors"], key="import_errors")
 
     st.subheader("2. Scan")
-    c = st.columns(3)
+    c = st.columns(3, vertical_alignment="bottom")
     limit = c[0].number_input("Pages to scan", 1, 500, 200, key="scan_limit")
     rescan = c[1].checkbox("Include pages already scanned", key="scan_rescan")
     ok = st.checkbox("I understand this sends real GET requests to the listed third-party sites "
@@ -666,7 +669,7 @@ def sites_page() -> None:
               key="mismatches")
 
     st.subheader("All sites")
-    f = st.columns(3)
+    f = st.columns(3, vertical_alignment="bottom")
     status_f = f[0].selectbox("Scan outcome", ["any", "ok", "unscanned", *sorted(r["scan_status"])], key="sites_status")
     label_f = f[1].selectbox("Label", ["any", *labels[:-1]], key="sites_label")
     mism = f[2].checkbox("Mismatches only", key="sites_mismatch")
@@ -677,11 +680,13 @@ def sites_page() -> None:
                                   "needs_render", "http_status", "scan_ms", "error"], key="sites_list")
 
 
-{
-    "Overview": overview,
-    "Solve": solve_page,
-    "Verify": verify_page,
-    "Detect": detect_page,
-    "Batch": batch_page,
-    "Sites": sites_page,
-}[page]()
+pages = [
+    st.Page(overview, title="Overview", icon=":lock:"),
+    st.Page(solve_page, title="Solve", icon="🔓"),
+    st.Page(verify_page, title="Verify", icon="✓"),
+    st.Page(detect_page, title="Detect", icon="🔍"),
+    st.Page(batch_page, title="Batch", icon="📦"),
+    st.Page(sites_page, title="Sites", icon="🌐"),
+]
+selected_page = st.navigation(pages)
+selected_page.run()
