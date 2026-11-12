@@ -1,0 +1,59 @@
+# Environment — never commit secrets
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+*.manifest
+*.spec
+pip-wheel-metadata/
+*.pot
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Database (local instance; reviewer creates their own)
+data/captcha_tool.db*
+
+# ML model weights (too large for Git; download or train locally)
+# crnn.onnx (4 MB) IS tracked so the tool runs without retraining; only the PyTorch checkpoints are not
+data/models/*.pt
+data/models/*.pth
+# glyph template caches rebuild automatically on first use
+data/models/glyphs_*.npz
+
+# Generated synthetic data
+data/synthetic/
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

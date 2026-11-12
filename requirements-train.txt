@@ -1,0 +1,6 @@
+# Only needed to retrain the CRNN (ml/train_crnn.py). Running the tool does NOT need this:
+# the trained model ships as data/models/crnn.onnx and runs on onnxruntime from requirements.txt.
+# CPU-only torch keeps the download small.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.4
+onnx>=1.16

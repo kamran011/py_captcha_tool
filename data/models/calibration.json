@@ -1,0 +1,30 @@
+{
+  "target_precision": 0.9,
+  "min_support": 30,
+  "solvers": {
+    "crnn_onnx": {
+      "threshold": 0.6,
+      "exact_match_val": 0.986,
+      "exact_match_test": 0.974,
+      "val_at_threshold": {
+        "coverage": 1.0,
+        "precision": 0.986,
+        "accepted": 1000
+      },
+      "test_at_threshold": {
+        "coverage": 1.0,
+        "precision": 0.974,
+        "accepted": 1000
+      },
+      "advisory_only": false
+    },
+    "segment_knn": {
+      "threshold": null,
+      "exact_match_val": 0.296,
+      "exact_match_test": 0.337,
+      "val_at_threshold": null,
+      "test_at_threshold": null,
+      "advisory_only": true
+    }
+  }
+}

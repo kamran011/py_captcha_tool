@@ -1,0 +1,190 @@
+{
+  "scan_date_utc": "2026-11-11",
+  "method": "one plain GET per contact page + that host's robots.txt (obeyed); static HTML analysis only; no JavaScript, forms, challenges or tokens; max 5 concurrent, one request at a time per host",
+  "user_agent": "CaptchaRecognitionTool/1.0 (take-home assignment; read-only detection scan; no form interaction)",
+  "http_errors_by_status": {
+    "403": 108,
+    "404": 1,
+    "405": 2,
+    "503": 1
+  },
+  "analysed_by_platform": {
+    "BigCommerce": {
+      "analysed": 3,
+      "not_analysed": 63
+    },
+    "Ecwid": {
+      "analysed": 5,
+      "not_analysed": 0
+    },
+    "Magento": {
+      "analysed": 11,
+      "not_analysed": 5
+    },
+    "OpenCart": {
+      "analysed": 13,
+      "not_analysed": 3
+    },
+    "PrestaShop": {
+      "analysed": 2,
+      "not_analysed": 0
+    },
+    "Shift4Shop": {
+      "analysed": 2,
+      "not_analysed": 6
+    },
+    "Shopify": {
+      "analysed": 0,
+      "not_analysed": 3
+    },
+    "Square Online": {
+      "analysed": 4,
+      "not_analysed": 0
+    },
+    "Squarespace": {
+      "analysed": 1,
+      "not_analysed": 1
+    },
+    "Volusion": {
+      "analysed": 0,
+      "not_analysed": 9
+    },
+    "WooCommerce": {
+      "analysed": 46,
+      "not_analysed": 23
+    }
+  },
+  "total_sites": 200,
+  "scanned": 87,
+  "unscanned": 0,
+  "coverage": 0.435,
+  "scan_status": {
+    "http_error": 112,
+    "ok": 87,
+    "robots_unreachable": 1
+  },
+  "exact_accuracy": 0.5517,
+  "family_accuracy": 0.7701,
+  "exact_accuracy_v3_as_invisible": 0.6782,
+  "baseline_majority_class": {
+    "label": "recaptcha",
+    "accuracy": 0.3908
+  },
+  "labels": [
+    "recaptcha",
+    "recaptcha_invisible",
+    "hcaptcha",
+    "turnstile",
+    "none",
+    "other"
+  ],
+  "confusion_matrix": {
+    "recaptcha": {
+      "recaptcha": 19,
+      "recaptcha_invisible": 0,
+      "hcaptcha": 0,
+      "turnstile": 0,
+      "none": 15,
+      "other": 0
+    },
+    "recaptcha_invisible": {
+      "recaptcha": 19,
+      "recaptcha_invisible": 0,
+      "hcaptcha": 0,
+      "turnstile": 0,
+      "none": 1,
+      "other": 0
+    },
+    "hcaptcha": {
+      "recaptcha": 0,
+      "recaptcha_invisible": 0,
+      "hcaptcha": 1,
+      "turnstile": 0,
+      "none": 2,
+      "other": 0
+    },
+    "turnstile": {
+      "recaptcha": 0,
+      "recaptcha_invisible": 0,
+      "hcaptcha": 0,
+      "turnstile": 10,
+      "none": 2,
+      "other": 0
+    },
+    "none": {
+      "recaptcha": 0,
+      "recaptcha_invisible": 0,
+      "hcaptcha": 0,
+      "turnstile": 0,
+      "none": 18,
+      "other": 0
+    },
+    "other": {
+      "recaptcha": 0,
+      "recaptcha_invisible": 0,
+      "hcaptcha": 0,
+      "turnstile": 0,
+      "none": 0,
+      "other": 0
+    }
+  },
+  "per_class_exact": {
+    "recaptcha": {
+      "precision": 0.5,
+      "recall": 0.5588,
+      "f1": 0.5278,
+      "support": 34
+    },
+    "recaptcha_invisible": {
+      "precision": null,
+      "recall": 0.0,
+      "f1": null,
+      "support": 20
+    },
+    "hcaptcha": {
+      "precision": 1.0,
+      "recall": 0.3333,
+      "f1": 0.5,
+      "support": 3
+    },
+    "turnstile": {
+      "precision": 1.0,
+      "recall": 0.8333,
+      "f1": 0.9091,
+      "support": 12
+    },
+    "none": {
+      "precision": 0.4737,
+      "recall": 1.0,
+      "f1": 0.6429,
+      "support": 18
+    }
+  },
+  "per_class_family": {
+    "recaptcha": {
+      "precision": 1.0,
+      "recall": 0.7037,
+      "f1": 0.8261,
+      "support": 54
+    },
+    "hcaptcha": {
+      "precision": 1.0,
+      "recall": 0.3333,
+      "f1": 0.5,
+      "support": 3
+    },
+    "turnstile": {
+      "precision": 1.0,
+      "recall": 0.8333,
+      "f1": 0.9091,
+      "support": 12
+    },
+    "none": {
+      "precision": 0.4737,
+      "recall": 1.0,
+      "f1": 0.6429,
+      "support": 18
+    }
+  },
+  "js_injected_suspected": 16
+}

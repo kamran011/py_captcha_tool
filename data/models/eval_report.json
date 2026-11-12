@@ -1,0 +1,71 @@
+{
+  "split": "test",
+  "n": 1000,
+  "exact_match": 0.974,
+  "char_accuracy": 0.9953,
+  "mean_confidence": 0.9916,
+  "latency_ms_p50": 1.36,
+  "latency_ms_p95": 1.68,
+  "sample_errors": [
+    {
+      "file": "000035.png",
+      "truth": "TAN9K",
+      "pred": "TAV9K",
+      "conf": 0.936
+    },
+    {
+      "file": "000039.png",
+      "truth": "TQ8KKS",
+      "pred": "TQ8KAS",
+      "conf": 0.954
+    },
+    {
+      "file": "000041.png",
+      "truth": "9DEUTA",
+      "pred": "9DEUA",
+      "conf": 1.0
+    },
+    {
+      "file": "000109.png",
+      "truth": "QVYRDH",
+      "pred": "QVRDH",
+      "conf": 1.0
+    },
+    {
+      "file": "000151.png",
+      "truth": "J2DEHX",
+      "pred": "J2DHX",
+      "conf": 0.943
+    },
+    {
+      "file": "000187.png",
+      "truth": "ATHBV8",
+      "pred": "ATBV8",
+      "conf": 0.995
+    },
+    {
+      "file": "000201.png",
+      "truth": "WY3ZXP",
+      "pred": "W3ZXP",
+      "conf": 0.998
+    },
+    {
+      "file": "000216.png",
+      "truth": "KQKH8Q",
+      "pred": "KCKH8Q",
+      "conf": 0.983
+    },
+    {
+      "file": "000232.png",
+      "truth": "AYHK9",
+      "pred": "AYHV9",
+      "conf": 0.999
+    },
+    {
+      "file": "000292.png",
+      "truth": "LUDD",
+      "pred": "LUUDD",
+      "conf": 0.898
+    }
+  ]
+}

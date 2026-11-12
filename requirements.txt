@@ -1,0 +1,26 @@
+# Core API
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic-settings>=2.4
+sqlalchemy>=2.0
+python-multipart>=0.0.9
+httpx>=0.27
+
+# Dashboard
+streamlit>=1.39
+pandas>=2.2
+
+# Vision / solving
+opencv-python-headless>=4.10
+numpy>=1.26
+onnxruntime>=1.19      # runs the trained model (inference only; no PyTorch needed)
+pillow>=10.4
+captcha>=0.6          # synthetic CAPTCHA generator (candidate-controlled dataset)
+
+# Browser automation (local demo pages and read-only detection scan only)
+playwright>=1.47
+
+# Tests
+pytest>=8.3
+
+# Only needed to RETRAIN the model (~45 min on CPU): pip install -r requirements-train.txt

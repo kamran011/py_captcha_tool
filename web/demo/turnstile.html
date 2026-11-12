@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloudflare Turnstile demo</title>
+<style>
+  body { font-family: system-ui, Arial, sans-serif; max-width: 640px; margin: 48px auto; padding: 0 20px; color: #222; }
+  h1 { font-size: 1.3rem; } p.note { color: #555; font-size: .9rem; }
+  fieldset { border: 1px solid #ddd; border-radius: 6px; margin: 16px 0; padding: 12px 16px; }
+  label { font-size: .85rem; color: #444; margin-right: 12px; }
+  input[type=number] { width: 5rem; } select { padding: 3px; }
+  button { margin: 10px 8px 0 0; padding: 8px 16px; border: 0; border-radius: 4px; background: #1f6feb; color: #fff; cursor: pointer; }
+  button.secondary { background: #6b7280; }
+  pre { background: #f6f8fa; padding: 12px; border-radius: 6px; overflow: auto; font-size: .82rem; min-height: 3rem; }
+  .ok { border-left: 4px solid #2a7a2a; } .err { border-left: 4px solid #b00020; }
+</style>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+<h1>Cloudflare Turnstile - local verification demo</h1>
+<p class="note">Cloudflare's dummy sitekey issues the dummy token XXXX.DUMMY.TOKEN.XXXX. Pick a scenario to use one of the published dummy secrets and see each server-side outcome. The token is sent to this server, which validates it with the provider's <code>siteverify</code>
+endpoint. The page never displays the token, only the result and its fingerprint.</p>
+
+<form id="f" onsubmit="return false">
+  <div class="cf-turnstile" data-sitekey="1x00000000000000000000AA"></div>
+</form>
+
+<fieldset>
+  <legend>Options</legend>
+  <label>Max token age (s) <input type="number" id="age" min="1" placeholder="default"></label>
+  <label>Dummy secret <select id="scenario"><option value="">configured secret</option><option value="pass">1x... always passes</option><option value="fail">2x... always fails</option><option value="spent">3x... duplicate token</option></select></label>
+</fieldset>
+
+<button id="verify" onclick="verify(false)">Verify token</button>
+<button id="replay" class="secondary" onclick="verify(true)">Verify the same token again (replay)</button>
+
+<h2 style="font-size:1rem">Result</h2>
+<pre id="out" data-state="idle">Complete the widget, then verify.</pre>
+
+<script>
+  const PROVIDER = "turnstile";
+  let lastToken = null;
+
+  function widgetToken() { return (window.turnstile && turnstile.getResponse()) || (document.querySelector("input[name=cf-turnstile-response]") || {}).value || null; }
+
+  async function verify(replay) {
+    const out = document.getElementById("out");
+    const token = replay ? lastToken : widgetToken();
+    if (!token) { out.textContent = replay ? "No previous token to replay." : "Complete the widget first."; return; }
+    lastToken = token;
+    const body = { provider: PROVIDER, token };
+    const age = parseInt(document.getElementById("age").value, 10);
+    if (age > 0) body.max_age_s = age;
+    const sc = document.getElementById("scenario");
+    if (sc && sc.value) body.test_scenario = sc.value;
+    out.dataset.state = "pending";
+    try {
+      const r = await fetch("/demo-api/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await r.json();
+      data.http = r.status;
+      out.textContent = JSON.stringify(data, null, 2);
+      out.className = data.ok ? "ok" : "err";
+      out.dataset.state = "done";
+    } catch (e) {
+      out.textContent = "Request failed: " + e.message;
+      out.dataset.state = "error";
+    }
+  }
+</script>
+</body>
+</html>
