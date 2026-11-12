@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>hCaptcha Test Page</title></head>
+<body>
+<h1>Register</h1>
+<form action="/register" method="post">
+  <input type="text" name="username" placeholder="Username">
+  <input type="password" name="password" placeholder="Password">
+
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+  <div class="h-captcha" data-sitekey="10000000-ffff-ffff-ffff-000000000001"></div>
+
+  <button type="submit">Register</button>
+</form>
+</body>
+</html>

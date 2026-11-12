@@ -161,7 +161,18 @@ class TestRequests:
         assert body["max_completion_tokens"] == 200 and "max_tokens" not in body
         part = body["messages"][0]["content"][1]
         assert part["type"] == "image_url" and part["image_url"]["url"].startswith("data:image/png;base64,")
+        assert part["image_url"]["detail"] == "low"            # image is < 512 px wide: low detail loses nothing
         assert res.text == "AB7K" and res.cost_usd == pytest.approx((120 * 0.15 + 20 * 0.60) / 1e6)
+
+    def test_prompt_lists_the_exact_alphabet(self):
+        assert all(c in v.PROMPT for c in v.ALPHABET) and "no 0, 1, I or O" in v.PROMPT
+
+    def test_reservation_grows_to_the_largest_measured_call(self):
+        c = cfg(vision_provider="openai", vision_model="m", vision_price_in_per_mtok=0.15, vision_price_out_per_mtok=0.60)
+        s = solver(Net(openai_ok(tin=8600)), c)
+        assert s.worst_case_usd() == pytest.approx((v.EST_INPUT_TOKENS * 0.15 + 200 * 0.60) / 1e6)
+        s.solve(GRAY)
+        assert s.worst_case_usd() == pytest.approx((int(8600 * 1.25) * 0.15 + 200 * 0.60) / 1e6)
 
     def test_token_param_name_is_configurable(self):
         net = Net(openai_ok())
@@ -469,6 +480,24 @@ class TestPipeline:
         assert res.attempts[1]["error"] == "advisory_only" and not res.accepted
         assert res.text == "AB7K" and res.method == "vision_api"                # best candidate, flagged unaccepted
         assert res.cost_usd == pytest.approx((500 * 0.10 + 20 * 0.50) / 1e6) and res.attempts[1]["detail"]["external_call"]
+
+    def test_plausible_advisory_answer_outranks_a_confident_implausible_one(self):
+        p, _ = pipe(Net(anthropic_ok('{"text": "AB7K", "confidence": 0.5}')), local=Local(text="S8T976XX", conf=0.95))
+        res = p.solve(GRAY, challenge_type="text")
+        assert res.attempts[0]["error"] == "implausible_length" and not res.accepted
+        assert res.text == "AB7K" and res.method == "vision_api" and res.error == "advisory_only"
+
+    def test_invalid_reply_names_the_sanitised_candidate(self):
+        with pytest.raises(ValueError, match=r"reply '8T06X' is not"):
+            parse_answer('{"text": "8T06X", "confidence": 0.9}')
+        with pytest.raises(ValueError, match=r"reply 'AB\?\?CD' is not"):
+            parse_answer('{"text": "AB<>CD", "confidence": 0.9}')
+
+    def test_threshold_measured_on_another_model_is_ignored(self):
+        p, vision = pipe(Net(), calibration={"vision_api": {"threshold": 0.5, "model": "some-other-model"}})
+        assert p._threshold_for(vision) is None
+        same = {"vision_api": {"threshold": 0.5, "model": vision.cfg.vision_model}}
+        assert SolvePipeline(solvers_for=lambda t: [vision], calibration=same)._threshold_for(vision) == 0.5
 
     def test_calibrated_vision_is_accepted_when_the_local_models_fail(self):
         p, _ = pipe(Net(), calibration={"vision_api": {"threshold": 0.5}})

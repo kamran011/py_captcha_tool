@@ -80,7 +80,7 @@ Two processes: the API and the dashboard. The dashboard holds the API key server
 | Quality gates | blank, noise and heavy blur rejected; accuracy unchanged on good images |
 | Token verification (real provider test endpoints) | Turnstile pass / fail / duplicate, hCaptcha pass / invalid, reCAPTCHA pass and local replay (409) |
 | Site benchmark, 200 supplied sites | 87 analysed (43.5%); provider-level accuracy 77.0%, exact 55.2% (67.8% counting v3 as invisible, reported separately); precision 100% |
-| Tests | 517 passing offline, 7 opt-in (6 live-provider, 1 live-vision) |
+| Tests | 527 passing offline, 7 opt-in (6 live-provider, 1 live-vision) |
 
 ## Requirements coverage
 

@@ -4,6 +4,7 @@ Secrets use SecretStr so pydantic never logs their plain-text value.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Literal
 from pydantic import SecretStr
@@ -12,7 +13,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=os.getenv("CAPTCHA_ENV_FILE", ".env"),   # tests point this away from the developer's .env
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

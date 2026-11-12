@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>reCAPTCHA v2 Test Page</title></head>
+<body>
+<h1>Contact Us</h1>
+<form action="/submit" method="post">
+  <input type="text" name="name" placeholder="Your name">
+  <input type="email" name="email" placeholder="Your email">
+  <textarea name="message" placeholder="Message"></textarea>
+
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <div class="g-recaptcha" data-sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"></div>
+
+  <button type="submit">Send</button>
+</form>
+</body>
+</html>

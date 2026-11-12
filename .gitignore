@@ -36,6 +36,9 @@ data/models/glyphs_*.npz
 # Generated synthetic data
 data/synthetic/
 
+# Manual upload test samples (developer scratch data)
+data/sample_upload_test/
+
 # pytest / coverage
 .pytest_cache/
 .coverage

@@ -225,3 +225,45 @@ def test_record_attempt():
         assert row.success is True and row.method_used == "m"
         wrong = record_attempt(db, res, expected="WXYZ")
         assert wrong.success is False
+
+
+def test_hard_samples_are_reproducible():
+    from dashboard import samples
+
+    for level in samples.HARD_LEVELS:
+        assert samples.hard_sample(level, 4) == samples.hard_sample(level, 4)
+
+
+@needs_data
+def test_hard_samples_push_the_chain_into_fallback():
+    """Medium stays readable for the CRNN; harder levels are rejected by it and fall through to segmentation."""
+    from dashboard import samples
+
+    pipe = SolvePipeline()
+    for level in ("Medium", "Hard", "Very hard"):
+        read = fell_back = 0
+        for i in range(samples.HARD_COUNT):
+            image, text = samples.hard_sample(level, i)
+            res = pipe.solve(image, "text")
+            crnn = res.attempts[0]
+            read += crnn["accepted"] and crnn["text"] == text
+            fell_back += not crnn["accepted"] and [a["method"] for a in res.attempts][:2] == ["crnn_onnx", "segment_knn"]
+        if level == "Medium":
+            assert read >= 17, (level, read)
+        else:
+            assert fell_back >= 18, (level, fell_back)
+
+
+@needs_data
+def test_hard_styles_are_solvable_inputs_not_crashes():
+    """The look-alike styles reach the solvers (not refused wholesale by the quality gate) and never error."""
+    from dashboard import samples
+
+    pipe = SolvePipeline()
+    for level in ("Skewed", "Hatched", "Crowded", "Ink blob"):
+        reached = 0
+        for i in range(samples.HARD_COUNT):
+            res = pipe.solve(samples.hard_sample(level, i)[0], "text")
+            assert res.error != "internal_error", level
+            reached += bool(res.attempts)
+        assert reached >= 18, (level, reached)

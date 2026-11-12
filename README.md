@@ -14,8 +14,8 @@ Measured on this project (synthetic data and test keys); every figure can be rep
 | Math CAPTCHA solver, 300 images | 99.7% |
 | Token verification | real provider test endpoints: Turnstile, hCaptcha, reCAPTCHA; replay, missing, malformed, invalid, expired, provider-down each return a distinct structured result |
 | Provider detection on the 200 supplied sites | **87 of 200 analysed** (the rest refused automated clients, mostly HTTP 403); provider-level accuracy 77.0% on those 87, precision 100% |
-| Optional third-party vision solver | built, off by default, cost priced from token usage; **not yet run against the real provider** (no key was available) |
-| Tests | 517 pass offline; 7 opt-in live tests |
+| Optional third-party vision solver | built, off by default, cost priced from token usage; measured on 120 hard images the local chain fails: `gpt-4o-mini` 4% ($0.00045 per call), `gpt-4o` 6.7%, so it stays advisory (never accepted alone) |
+| Tests | 527 pass offline; 7 opt-in live tests |
 
 ## Quick start
 
@@ -57,7 +57,7 @@ Open the dashboard at http://127.0.0.1:8501, the interactive API docs at http://
 
 | Page / route | Purpose |
 |---|---|
-| Dashboard **Solve** / `POST /api/v1/solve` | upload an image or use a held-out, math or grid sample (optionally degraded: blur, noise, low contrast); see the answer, every method tried, confidence, time and cost |
+| Dashboard **Solve** / `POST /api/v1/solve` | upload an image or use a held-out, hard (distorted beyond training: skewed, hatched, crowded, ink-blob), math or grid sample (optionally degraded: blur, noise, low contrast); see the answer, every method tried, confidence, time and cost |
 | Dashboard **Verify** / `POST /api/v1/verify` | verify a provider token; see the verdict, latency and token fingerprint |
 | Dashboard **Detect** / `POST /api/v1/detect` | which CAPTCHA provider, variant and sitekey a page's HTML embeds |
 | Dashboard **Batch** / `POST /api/v1/batch` | accuracy over a named dataset or uploaded images: exact match, character accuracy, coverage, latency p50/p95, confident-wrong answers |
@@ -109,7 +109,7 @@ pip install -r requirements-train.txt && python ml/generate_dataset.py && python
 ## Tests
 
 ```bash
-pytest tests -q                                          # 517 tests, offline and deterministic (about 40 s with the datasets)
+pytest tests -q                                          # 527 tests, offline and deterministic (about 40 s with the datasets)
 RUN_LIVE=1 pytest tests/test_live_providers.py -v        # also calls the providers' real test endpoints (test keys only)
 RUN_LIVE=1 pytest tests/test_live_vision.py -v           # needs VISION_API_KEY; spends a few cents
 ```

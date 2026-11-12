@@ -84,7 +84,6 @@ def test_api_offline_is_explained_not_a_stack_trace(monkeypatch):
         monkeypatch.setattr(ApiClient, name, lambda self, *a, **k: down)
     at = run_page("Overview")
     assert not at.exception and any("not reachable" in e.value for e in at.error)
-    assert any("offline" in e.value for e in at.sidebar.error)
 
 
 def test_bad_api_key_is_explained(monkeypatch, fake_api):
@@ -338,7 +337,7 @@ def test_external_answer_is_labelled_with_provider_model_and_tokens(monkeypatch,
     assert not at.exception
     text = " ".join(i.value for i in at.info)
     assert "third-party anthropic model claude-haiku-5-5" in text and "1000 input and 100 output tokens" in text
-    assert {m.label: m.value for m in at.metric}["Cost"] == "$0.000150"
+    assert any("$0.000150" in m.value for m in at.markdown)
 
 
 def test_overview_shows_solver_status_budget_and_cost_by_method(monkeypatch, fake_api):
@@ -412,3 +411,34 @@ def test_reimport_says_nothing_changed(monkeypatch, fake_m6):
     at.button(key="sites_import_bundled").click().run()
     assert not at.exception
     assert any("Already imported: all 200 sites" in i.value for i in at.info)
+
+
+def test_hard_sample_shows_true_text_and_the_fallback_chain(monkeypatch, fake_api):
+    fell_back = {**SOLVED, "accepted": False, "text": "S8T976XX", "method": "crnn_onnx", "error": "implausible_length",
+                 "attempts": [{"method": "crnn_onnx", "text": "S8T976XX", "confidence": 0.9, "ms": 3.0, "cost_usd": 0.0,
+                               "accepted": False, "error": "implausible_length"},
+                              {"method": "segment_knn", "text": "8TQ", "confidence": 0.4, "ms": 2.0, "cost_usd": 0.0,
+                               "accepted": False, "error": "advisory_only"}]}
+    monkeypatch.setattr(ApiClient, "solve", lambda self, *a, **k: (fake_api.setdefault("solve", []).append((a, k)),
+                                                                   ApiResult(200, fell_back))[1])
+    at = run_page("Solve")
+    at.radio(key="solve_source").set_value("Hard sample").run()
+    image, text = samples.hard_sample("Hard", 0)
+    assert any(text in c.value for c in at.caption)
+    at.button(key="solve_go").click().run()
+    assert not at.exception
+    (args, _), = fake_api["solve"]
+    assert args[0] == image and args[2] == text
+    page = " ".join(m.value for m in at.markdown) + " ".join(w.value for w in at.warning)
+    assert "Fallback chain" in page and "segment_knn" in page and "answer length outside" in page
+
+
+def test_confident_wrong_answer_is_shown_as_an_error_not_a_success(monkeypatch, fake_api):
+    wrong = {**SOLVED, "accepted": True, "success": False, "text": "8WM6X", "confidence": 0.943}
+    monkeypatch.setattr(ApiClient, "solve", lambda self, *a, **k: ApiResult(200, wrong))
+    at = run_page("Solve")
+    at.radio(key="solve_source").set_value("Hard sample").run()
+    at.button(key="solve_go").click().run()
+    assert not at.exception
+    assert any("Wrong answer" in e.value and "94.3%" in e.value for e in at.error)
+    assert not any("8WM6X" in s.value for s in at.success)

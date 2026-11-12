@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Cloudflare Turnstile Test Page</title></head>
+<body>
+<h1>Login</h1>
+<form action="/login" method="post">
+  <input type="email" name="email" placeholder="Email">
+  <input type="password" name="password" placeholder="Password">
+
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <div class="cf-turnstile" data-sitekey="1x00000000000000000000AA"></div>
+
+  <button type="submit">Log in</button>
+</form>
+</body>
+</html>

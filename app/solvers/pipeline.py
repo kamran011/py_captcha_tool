@@ -100,6 +100,8 @@ class SolvePipeline:
 
     def _threshold_for(self, solver: Solver) -> float | None:
         entry = self.calibration.get(solver.name)
+        if entry and getattr(solver, "external", False) and entry.get("model") not in (None, settings.vision_model):
+            entry = None            # measured on a different model: that threshold says nothing about this one
         if entry is None:
             return None if getattr(solver, "requires_calibration", False) else self.threshold
         return entry.get("threshold")
@@ -211,10 +213,11 @@ class SolvePipeline:
             if attempt["accepted"]:
                 best = attempt
                 break
-            if attempt["text"] is not None and (
-                best is None or attempt["confidence"] > best["confidence"]
-            ):
-                best = attempt
+            if attempt["text"] is not None:
+                # A plausible answer outranks a more confident one that already failed the shape check
+                rank = (self._implausible(ctype, attempt["text"]) is None, attempt["confidence"])
+                if best is None or rank > best_rank:
+                    best, best_rank = attempt, rank
 
         if best is not None:
             result.text = best["text"]

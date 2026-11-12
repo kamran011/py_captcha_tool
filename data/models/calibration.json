@@ -25,6 +25,26 @@
       "val_at_threshold": null,
       "test_at_threshold": null,
       "advisory_only": true
+    },
+    "vision_api": {
+      "threshold": null,
+      "exact_match_val": 0.0667,
+      "exact_match_test": 0.0667,
+      "val_at_threshold": null,
+      "test_at_threshold": null,
+      "advisory_only": true,
+      "source": "hard samples not accepted by the local chain",
+      "images": 120,
+      "model": "gpt-4o",
+      "provider": "openai",
+      "spent_usd": 0.086511,
+      "exact_match_by_level": {
+        "Hard": 0.047,
+        "Very hard": 0.0,
+        "Crowded": 0.2,
+        "Skewed": 0.0,
+        "Ink blob": 0.333
+      }
     }
   }
 }

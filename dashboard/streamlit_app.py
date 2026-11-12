@@ -6,6 +6,12 @@ CAPTCHA Tool dashboard (Streamlit). Talks to the FastAPI backend; run both:
 """
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# `streamlit run` puts only this file's folder on sys.path, not the project root.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import altair as alt
 import pandas as pd
 import streamlit as st
@@ -29,18 +35,19 @@ STYLE = """
 [data-testid="stVegaLiteChart"] ~ [data-testid="stElementToolbar"],
 [data-testid="stElementContainer"]:has([data-testid="stVegaLiteChart"]) [data-testid="stElementToolbar"] { display: none !important; }
 header[data-testid="stHeader"] { background: transparent; }
-.block-container { padding-top: 2.4rem; padding-bottom: 3rem; max-width: 1320px; }
+.block-container { padding-top: 1rem; padding-bottom: 3rem; max-width: 1320px; }
 h1 { font-size: 1.85rem !important; font-weight: 650; margin-bottom: 0 !important; padding-bottom: .15rem !important; }
 h3 { font-size: 1.1rem !important; font-weight: 600; margin-top: 1.4rem !important; padding-bottom: .3rem !important; }
 [data-testid="stMetric"] { background: rgba(128,128,128,.07); border: 1px solid rgba(128,128,128,.22);
     border-radius: 10px; padding: .65rem .9rem; min-height: 5.6rem; }
 [data-testid="stMetricLabel"], [data-testid="stMetricLabel"] * { white-space: normal !important; overflow: visible !important;
-    text-overflow: clip !important; font-size: .74rem !important; letter-spacing: .04em; text-transform: uppercase; opacity: .72; }
+    text-overflow: clip !important; font-size: .74rem !important; letter-spacing: .04em; text-transform: uppercase; opacity: 1; }
+[data-testid="stMetricLabel"] [data-testid="stTooltipHoverTarget"] svg { opacity: 1; }
 [data-testid="stMetricValue"], [data-testid="stMetricValue"] * { font-size: 1.45rem !important; line-height: 1.3;
     white-space: normal !important; overflow-wrap: anywhere; }
 [data-testid="stCaptionContainer"] { opacity: .8; }
 [data-testid="stSidebarContent"] { overflow: hidden !important; }
-[data-testid="stSidebarUserContent"] { padding-top: 0.1rem; height: 100%; }
+[data-testid="stSidebarUserContent"] { padding-top: 0.1rem; margin-top: -2.75rem; height: 100%; }
 [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] { gap: .2rem; display: flex; flex-direction: column; height: 100%; }
 
 [data-testid="stSidebar"] [data-testid^="stBaseButton"] { justify-content: flex-start; min-height: 2.5rem; padding-left: .75rem; }
@@ -72,6 +79,12 @@ def pct(x) -> str:
 
 def usd(x: float | None) -> str:
     return "$0" if not x else f"${x:.6f}"
+
+
+def confidence_badge(value: float) -> str:
+    color = "#2e7d4f" if value >= 0.9 else "#b7791f" if value >= 0.6 else "#b83c4a"
+    return (f"<span style='background:{color};color:#fff;border-radius:999px;padding:.15rem .6rem;"
+            f"font-size:.9rem;font-weight:600'>{value:.1%}</span>")
 
 
 def ms(x) -> str:
@@ -275,40 +288,82 @@ def render_solve(res: ApiResult, expected: str | None) -> None:
         st.warning(f"Not solved: {problem}. The image was recognised as **{d.get('challenge_type')}**; "
                    "unreadable challenges are never sent to a solver.")
     elif d.get("accepted"):
-        match = ""
-        if expected:
-            match = " (matches the expected answer)" if d.get("success") else f" (expected {expected})"
-        st.success(f"Answer: **{d.get('text')}**{match}")
+        if expected and not d.get("success"):
+            st.error(f"Wrong answer: **{d.get('text')}** (expected {expected}). The solver accepted it at "
+                     f"{d.get('confidence', 0):.1%} confidence: a confident mistake.")
+        else:
+            match = " (matches the expected answer)" if expected else ""
+            st.success(f"Answer: **{d.get('text')}**{match}")
     else:
-        st.warning(f"No answer accepted: {problem}. Best candidate: {d.get('text')!r}")
+        st.warning(f"No answer accepted ({ATTEMPT_ERRORS.get(problem, problem)}). Best candidate: {d.get('text')!r}"
+                   + (f", expected {expected}" if expected else ""))
 
     c = st.columns([1.7, 1.4, 1, 1, 1])
-    c[0].metric("Challenge type", f"{d.get('challenge_type', 'n/a')} · {d.get('classifier_confidence', 0):.0%}",
-                help="The classifier's guess, then how sure it is. Kept on one line so all five cards have the same height.")
-    c[1].metric("Method", d.get("method") or "none")
-    c[2].metric("Confidence", f"{d.get('confidence', 0):.1%}")
-    c[3].metric("Time", ms(d.get("total_ms")))
-    c[4].metric("Cost", usd(d.get("cost_usd")))
+    with c[0].container(border=True):
+        st.markdown("<span title=\"The classifier's guess, then how sure it is.\" style='font-size:.75rem;"
+                    "letter-spacing:.05em;opacity:.7;cursor:help'>CHALLENGE TYPE <span style='color:#c9ced6;opacity:1'>ⓘ</span></span>", unsafe_allow_html=True)
+        st.markdown(f"**{d.get('challenge_type', 'n/a')}** {confidence_badge(d.get('classifier_confidence', 0))}",
+                    unsafe_allow_html=True)
+    with c[1].container(border=True):
+        st.caption("METHOD")
+        st.markdown(f"**{d.get('method') or 'none'}**")
+    with c[2].container(border=True):
+        st.caption("CONFIDENCE")
+        st.markdown(confidence_badge(d.get("confidence", 0)), unsafe_allow_html=True)
+    with c[3].container(border=True):
+        st.caption("TIME")
+        st.markdown(f"**{ms(d.get('total_ms'))}**")
+    with c[4].container(border=True):
+        st.caption("COST")
+        st.markdown(f"**{usd(d.get('cost_usd'))}**")
     if d.get("detail", {}).get("external_call"):
         det = d["detail"]
         st.info(f"This answer came from the third-party {det.get('provider')} model {det.get('model')}: the image was sent "
                 f"to the provider ({det.get('input_tokens')} input and {det.get('output_tokens')} output tokens, "
                 f"billed at the rates configured for the model).")
+    if len(d.get("attempts") or []) > 1:
+        st.markdown(f"Fallback chain: {solver_chain(d['attempts'])}")
     if d.get("attempts"):
         st.caption("Solvers tried, in order")
         table(d["attempts"], ["method", "text", "confidence", "ms", "cost_usd", "accepted", "error"])
-    with st.expander("Why (classifier and image quality)"):
-        detail = d.get("detail", {})
-        st.write("Classifier:", detail.get("classifier_reasons"))
-        st.write("Quality:", detail.get("quality"))
-        if detail.get("expression"):
-            st.write("Expression read:", detail["expression"])
+
+
+HARD_NOTES = {
+    "Medium": "Wave, tilt and speckle beyond the training data. Measured: the CRNN still reads 19 of 20 (15 falls back).",
+    "Hard": "Adds a thick crossing curve. Measured: the CRNN is rejected on 19 of 20 and the chain falls back to "
+            "segmentation; 16 is a confident wrong answer.",
+    "Very hard": "Every letter skewed and tilted its own way, heavy warp, three curves and dense speckle: hard for a "
+                 "person too. Measured: the CRNN is rejected on all 20 and the chain falls back to segmentation.",
+    "Skewed": "Each letter sheared and tilted on its own, still readable for a person. Measured: 18 confidently wrong, "
+              "2 fall back (9, 11): a known limit, the CRNN's confidence does not flag these mistakes.",
+    "Hatched": "Crossed diagonal lines over the text. Measured: 12 read, 5 confidently wrong (8, 10, 13, 18, 20), "
+               "2 fall back (1, 15), 1 refused by the quality gate as too noisy (2).",
+    "Crowded": "Letters squeezed until they overlap. Measured: 15 read, 5 confidently wrong (6, 9, 12, 13, 15).",
+    "Ink blob": "Dark blobs with the letters inverted inside. Measured: 6 fall back (3, 9, 11, 12, 13, 15), "
+                "14 confidently wrong: a known limit, the CRNN's confidence does not flag these mistakes.",
+}
+ATTEMPT_ERRORS = {
+    "low_confidence": "confidence below its threshold",
+    "implausible_length": "answer length outside 4-6 characters",
+    "degenerate_output": "one repeated character",
+    "advisory_only": "advisory only, never accepted on its own",
+    "timeout": "timed out",
+}
+
+
+def solver_chain(attempts: list[dict]) -> str:
+    steps = []
+    for a in attempts:
+        err = a.get("error") or ""
+        why = "accepted" if a.get("accepted") else ATTEMPT_ERRORS.get(err, err or "rejected")
+        steps.append(f"**{a['method']}** ({why})")
+    return " → ".join(steps)
 
 
 def solve_page() -> None:
     header("Solve a CAPTCHA", "Classify an image, run the solver chain and see every step: type, method, confidence, time and cost.")
     image, name, expected, challenge = None, "challenge.png", "", None
-    source = st.radio("Image source", ["Upload", "Held-out sample", "Math sample", "Unsupported sample (grid)"],
+    source = st.radio("Image source", ["Upload", "Held-out sample", "Hard sample", "Math sample", "Unsupported sample (grid)"],
                       horizontal=True, key="solve_source")
     controls, preview = st.columns([1.3, 1], gap="large")
 
@@ -327,6 +382,12 @@ def solve_page() -> None:
                 mode = st.selectbox("Degrade the image", samples.DEGRADATIONS, key="solve_degrade",
                                     help="Shows how the quality gates and the pipeline react to bad input")
                 image, name, expected = samples.degrade(samples.load_sample(pick[0]), mode), pick[0], pick[1]
+        elif source == "Hard sample":
+            level = st.selectbox("Difficulty", list(samples.HARD_LEVELS), index=1, key="solve_hard_level")
+            index = st.number_input("Sample", 1, samples.HARD_COUNT, 1, key="solve_hard_index")
+            image, expected = samples.hard_sample(level, int(index) - 1)
+            name = f"{level.lower().replace(' ', '_')}_{int(index):02d}.png"
+            st.caption(f"True text: **{expected}**. {HARD_NOTES[level]}")
         elif source == "Math sample":
             seed = st.number_input("Seed", 0, 10_000, 1, key="solve_seed")
             image, expr, answer = samples.math_sample(int(seed))

@@ -9,10 +9,17 @@ that never reaches it gets threshold null and becomes advisory: its answer is
 reported but never accepted on its own. The test split is used only to report the
 resulting precision and coverage.
 
-`--vision N` also measures the optional third-party vision solver on the first N
-validation images. THAT SPENDS REAL MONEY and sends those images to the provider,
-so it only runs with an explicit N, a configured key, and the daily budget guard on;
-the worst-case cost is printed first. Without it the vision solver stays advisory.
+`--vision N` also measures the optional third-party vision solver on N images. THAT
+SPENDS REAL MONEY and sends those images to the provider, so it only runs with an
+explicit N, a configured key, and the daily budget guard on (preloaded with the spend
+already recorded today); the worst-case cost is printed first. Without it the vision
+solver stays advisory.
+
+The vision solver is the last tier: it only ever sees images the local models failed.
+So it is measured on that population, not on the easy validation split: hard-sample
+images from every difficulty tier (indices the dashboard never shows) that the local
+chain does not accept. Alternate images form a validation half (threshold chosen) and
+a test half (precision reported). The per-minute call cap is waited out, never scored.
 
 Output: data/models/calibration.json (read by app/solvers/pipeline.py).
 """
@@ -22,6 +29,7 @@ import argparse
 import csv
 import json
 import sys
+import time
 from pathlib import Path
 
 import cv2
@@ -75,6 +83,54 @@ def collect(solver, split: str, limit: int | None = None) -> tuple[np.ndarray, n
     return np.array(conf), np.array(hit, dtype=bool)
 
 
+VISION_FIRST_INDEX = 100          # dashboard hard samples use indices 0-19; never calibrate on them
+
+
+def vision_population(n: int) -> list[tuple[np.ndarray, str, str]]:
+    """N hard images (round-robin over the tiers) that the local solvers do NOT accept."""
+    from app.solvers.pipeline import SolvePipeline
+    from dashboard.samples import HARD_LEVELS, hard_sample
+
+    local = SolvePipeline()
+    out, index, levels = [], VISION_FIRST_INDEX, list(HARD_LEVELS)
+    while len(out) < n and index < VISION_FIRST_INDEX + 50 * n:
+        for level in levels:
+            png, text = hard_sample(level, index)
+            gray = cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_GRAYSCALE)
+            res = local.solve(gray, challenge_type="text", allow_external=False)
+            if not res.accepted and not (res.error or "").startswith("poor_quality"):
+                out.append((gray, text, level))
+            if len(out) >= n:
+                break
+        index += 1
+    return out
+
+
+def collect_vision(solver, items) -> tuple[np.ndarray, np.ndarray, list[dict]]:
+    from app.solvers.vision_api_solver import BudgetExceeded, RateLimited
+
+    conf, hit, rows = [], [], []
+    for i, (gray, text, level) in enumerate(items, 1):
+        while True:
+            try:
+                res = solver.solve(gray)
+                c, h, got, err = res.confidence, res.text == text, res.text, None
+            except RateLimited:
+                time.sleep(5)                 # the per-minute cap is a pause, not a wrong answer
+                continue
+            except BudgetExceeded as exc:
+                sys.exit(f"stopped after {i - 1} images: {exc}")
+            except Exception as exc:  # noqa: BLE001 - an unusable paid reply is a miss at zero confidence
+                c, h, got, err = 0.0, False, None, f"{type(exc).__name__}: {exc}"
+            break
+        conf.append(c)
+        hit.append(h)
+        rows.append({"level": level, "hit": h})
+        print(f"  [{i}/{len(items)}] {level:<9} truth={text:<6} read={got or '-':<6} conf={c:.2f} "
+              f"{'OK' if h else 'miss'}{'  ' + err if err else ''}", file=sys.stderr)
+    return np.array(conf), np.array(hit, dtype=bool), rows
+
+
 def entry(solver, vc, vh, tc, th, target) -> dict:
     t = choose_threshold(vc, vh, target, floor=settings.confidence_threshold)
     return {
@@ -103,19 +159,32 @@ def main() -> None:
     if args.vision:
         from app.solvers.vision_api_solver import EST_INPUT_TOKENS, VisionApiSolver, availability, prices_for
 
+        from app.db import SessionLocal
+        from app.solvers.vision_api_solver import preload_spend
+
         ok, why = availability()
         if not ok:
             sys.exit(f"cannot calibrate the vision solver: {why}")
         pin, pout = prices_for(settings)
-        worst = args.vision * (EST_INPUT_TOKENS * pin + settings.vision_max_tokens * pout) / 1e6
-        print(f"vision calibration: {args.vision} calls, worst case ${worst:.4f} "
-              f"(model {settings.vision_model}); budget guard ${settings.vision_budget_usd_per_day:.2f}/day")
         solver = VisionApiSolver()
-        vc, vh = collect(solver, "val", args.vision)
-        out["solvers"][solver.name] = entry(solver, vc, vh, None, None, args.target)
-        out["solvers"][solver.name]["images"] = args.vision
-        out["solvers"][solver.name]["model"] = settings.vision_model
-        out["solvers"][solver.name]["spent_usd"] = solver.budget.status()["spent_today_usd"]
+        with SessionLocal() as db:
+            already = preload_spend(db, solver.budget)
+        # 10K input tokens bounds every vision model measured here (gpt-4o-mini high detail ~8.7K)
+        worst = args.vision * (max(EST_INPUT_TOKENS, 10_000) * pin + settings.vision_max_tokens * pout) / 1e6
+        print(f"vision calibration: {args.vision} calls, worst case ${worst:.4f} (model {settings.vision_model}); "
+              f"${already:.4f} already spent today of ${settings.vision_budget_usd_per_day:.2f}", file=sys.stderr)
+        items = vision_population(args.vision)
+        print(f"  {len(items)} hard images the local chain does not accept", file=sys.stderr)
+        before = solver.budget.status()["spent_today_usd"]
+        conf, hit, rows = collect_vision(solver, items)
+        vc, vh, tc, th = conf[0::2], hit[0::2], conf[1::2], hit[1::2]
+        e = entry(solver, vc, vh, tc, th, args.target)
+        e.update(source="hard samples not accepted by the local chain", images=len(items),
+                 model=settings.vision_model, provider=settings.vision_provider,
+                 spent_usd=round(solver.budget.status()["spent_today_usd"] - before, 6),
+                 exact_match_by_level={lv: round(float(np.mean([r["hit"] for r in rows if r["level"] == lv])), 3)
+                                       for lv in dict.fromkeys(r["level"] for r in rows)})
+        out["solvers"][solver.name] = e
     else:
         previous = {}
         try:
