@@ -25,6 +25,8 @@ STYLE = """
 <style>
 #MainMenu, footer, [data-testid="stMainMenu"], [data-testid="stAppDeployButton"],
 [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
+[data-testid="stVegaLiteChart"] ~ [data-testid="stElementToolbar"],
+[data-testid="stElementContainer"]:has([data-testid="stVegaLiteChart"]) [data-testid="stElementToolbar"] { display: none !important; }
 header[data-testid="stHeader"] { background: transparent; }
 .block-container { padding-top: 2.4rem; padding-bottom: 3rem; max-width: 1320px; }
 h1 { font-size: 1.85rem !important; font-weight: 650; margin-bottom: 0 !important; padding-bottom: .15rem !important; }
@@ -560,6 +562,22 @@ def render_scan_status() -> None:
     st.session_state["scan_was_running"] = running
 
 
+def import_message(res: ApiResult) -> tuple[str, str]:
+    """Plain-language outcome of a CSV import: (st method name, text)."""
+    if not res.ok:
+        return "error", f"Import failed. {res.data.get('reason')}: {res.data.get('detail')}"
+    d = res.data
+    changed = d["inserted"] + d["updated"]
+    rejected = f" {d['rows_rejected']} rows were rejected." if d["rows_rejected"] else ""
+    if changed:
+        return "success", (f"Imported {d['inserted']} new and updated {d['updated']} sites; "
+                           f"{d['unchanged']} were already there.{rejected}")
+    if d["unchanged"]:
+        return "info", (f"Already imported: all {d['unchanged']} sites are in the database and nothing changed."
+                        f"{rejected}")
+    return "warning", f"No sites found in the file.{rejected}"
+
+
 def sites_page() -> None:
     header("Site detection benchmark",
            "Read-only detection of the CAPTCHA provider on the supplied contact pages, scored against the CSV labels.")
@@ -571,21 +589,22 @@ def sites_page() -> None:
 
     st.subheader("1. Import")
     cols = st.columns(2)
-    if cols[0].button("Import the bundled CSV (200 sites)", key="sites_import_bundled"):
-        st.session_state["sites_import"] = api.sites_import()
+    if cols[0].button("Import the bundled CSV (200 sites)", key="sites_import_bundled", use_container_width=True):
+        with st.spinner("Importing..."):
+            st.session_state["sites_import"] = api.sites_import()
+        st.toast(import_message(st.session_state["sites_import"])[1])
     up = cols[1].file_uploader("...or upload a CSV with a 'Contact Page' column", type=["csv"], key="sites_upload")
     if up is not None and st.button("Import uploaded CSV", key="sites_import_upload"):
-        st.session_state["sites_import"] = api.sites_import(up.getvalue())
+        with st.spinner("Importing..."):
+            st.session_state["sites_import"] = api.sites_import(up.getvalue())
+        st.toast(import_message(st.session_state["sites_import"])[1])
     imp: ApiResult | None = st.session_state.get("sites_import")
     if imp is not None and not api_problem(imp):
-        d = imp.data
-        if imp.ok:
-            st.success(f"Imported: {d['inserted']} new, {d['updated']} updated, {d['unchanged']} unchanged; "
-                       f"{d['rows_rejected']} rows rejected.")
-            if d["errors"]:
-                table(d["errors"], key="import_errors")
-        else:
-            st.error(f"{d.get('reason')}: {d.get('detail')}")
+        kind, text = import_message(imp)
+        getattr(st, kind)(text)
+        if imp.ok and imp.data["errors"]:
+            st.caption("Rejected rows and why:")
+            table(imp.data["errors"], key="import_errors")
 
     st.subheader("2. Scan")
     c = st.columns(3)

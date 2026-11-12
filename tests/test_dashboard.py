@@ -402,3 +402,13 @@ def test_short_tables_show_no_pager(monkeypatch, fake_api):
     monkeypatch.setattr(ApiClient, "attempts", lambda self, *a, **k: ApiResult(200, {"total": 4, "items": _attempt_rows(4)}))
     at = run_page("Overview")
     assert not at.exception and _rows_caption(at) is None
+
+
+def test_reimport_says_nothing_changed(monkeypatch, fake_m6):
+    # The reviewer clicked the import button and saw only "0 new, 0 updated": say what it means instead.
+    monkeypatch.setattr(ApiClient, "sites_import", lambda self, *a, **k: ApiResult(200, {
+        "inserted": 0, "updated": 0, "unchanged": 200, "rows_valid": 200, "rows_rejected": 0, "errors": [], "warnings": []}))
+    at = run_page("Sites")
+    at.button(key="sites_import_bundled").click().run()
+    assert not at.exception
+    assert any("Already imported: all 200 sites" in i.value for i in at.info)

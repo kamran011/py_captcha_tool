@@ -15,7 +15,7 @@ Measured on this project (synthetic data and test keys); every figure can be rep
 | Token verification | real provider test endpoints: Turnstile, hCaptcha, reCAPTCHA; replay, missing, malformed, invalid, expired, provider-down each return a distinct structured result |
 | Provider detection on the 200 supplied sites | **87 of 200 analysed** (the rest refused automated clients, mostly HTTP 403); provider-level accuracy 77.0% on those 87, precision 100% |
 | Optional third-party vision solver | built, off by default, cost priced from token usage; **not yet run against the real provider** (no key was available) |
-| Tests | 516 pass offline; 7 opt-in live tests |
+| Tests | 517 pass offline; 7 opt-in live tests |
 
 ## Quick start
 
@@ -109,7 +109,7 @@ pip install -r requirements-train.txt && python ml/generate_dataset.py && python
 ## Tests
 
 ```bash
-pytest tests -q                                          # 516 tests, offline and deterministic (about 40 s with the datasets)
+pytest tests -q                                          # 517 tests, offline and deterministic (about 40 s with the datasets)
 RUN_LIVE=1 pytest tests/test_live_providers.py -v        # also calls the providers' real test endpoints (test keys only)
 RUN_LIVE=1 pytest tests/test_live_vision.py -v           # needs VISION_API_KEY; spends a few cents
 ```
