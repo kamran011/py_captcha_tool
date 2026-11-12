@@ -1,6 +1,6 @@
 # Demo video script (target 4:30, limit 5:00)
 
-A reviewer sees the real tool, so every number below is one the tool itself shows. Say the caveats out loud; they are part of the answer, and the assignment weighs reliability and honest evaluation.
+Every number below is one the tool itself shows. Say the caveats out loud — they are part of the answer.
 
 ## Before recording (2 minutes)
 

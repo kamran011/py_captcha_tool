@@ -1,4 +1,4 @@
-# Requirements ("The Dreamer")
+# Requirements
 
 CAPTCHA Solving & Verification Tool — Technology Brainz Assignment 01.
 

@@ -2,7 +2,7 @@
 
 CAPTCHA Solving & Verification Tool, Technology Brainz Assignment 01. This is the short version; `docs/design.md` has the full decision log, status tables, edge cases and measurements, and `docs/requirements.md` the acceptance criteria.
 
-## Scope, stated once
+## Scope
 
 Per assignment sections 1 and 7 the tool is exercised only on **synthetic CAPTCHAs, local demo pages, and the providers' official test keys**. The supplied 200-site CSV is used as a **labelled recognition benchmark** by a read-only scan: one plain GET per contact page (plus `robots.txt`, obeyed), static HTML analysis, nothing filled, submitted, solved or requested. Contact-form automation and solving CAPTCHAs on third-party sites are out of scope and not built.
 

@@ -1,4 +1,4 @@
-# Tasks ("The Executor")
+# Tasks
 
 | # | Milestone | Done when | Est. | Status |
 |---|---|---|---|---|

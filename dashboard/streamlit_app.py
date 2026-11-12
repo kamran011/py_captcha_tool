@@ -17,7 +17,8 @@ st.set_page_config(page_title="CAPTCHA Tool", page_icon=":lock:", layout="wide",
                    menu_items={"Get help": None, "Report a bug": None,
                                "About": "CAPTCHA Solving & Verification Tool, Technology Brainz Assignment 01."})
 api = ApiClient()
-PAGES = ["Overview", "Solve", "Verify", "Detect", "Batch", "Sites"]
+PAGES = {"Overview": ":material/dashboard:", "Solve": ":material/lock_open:", "Verify": ":material/verified:",
+         "Detect": ":material/search:", "Batch": ":material/inventory_2:", "Sites": ":material/language:"}
 
 # Presentation only. Hides the Streamlit menu, deploy button, footer and top decoration (this is a single-purpose
 # tool, not a multi-page app builder), and gives metrics a card look that works in both light and dark themes.
@@ -38,6 +39,16 @@ h3 { font-size: 1.1rem !important; font-weight: 600; margin-top: 1.4rem !importa
 [data-testid="stMetricValue"], [data-testid="stMetricValue"] * { font-size: 1.45rem !important; line-height: 1.3;
     white-space: normal !important; overflow-wrap: anywhere; }
 [data-testid="stCaptionContainer"] { opacity: .8; }
+[data-testid="stSidebarContent"] { overflow: hidden !important; }
+[data-testid="stSidebarUserContent"] { padding-top: 0.1rem; height: 100%; }
+[data-testid="stSidebarUserContent"] [data-testid="stVerticalBlock"] { gap: .2rem; display: flex; flex-direction: column; height: 100%; }
+
+[data-testid="stSidebar"] [data-testid^="stBaseButton"] { justify-content: flex-start; min-height: 2.5rem; padding-left: .75rem; }
+[data-testid="stSidebar"] [data-testid^="stBaseButton"] > div, [data-testid="stSidebar"] [data-testid^="stBaseButton"] p {
+    justify-content: flex-start; text-align: left; }
+[data-testid="stSidebar"] [data-testid^="stBaseButton"] { transition: background-color .15s ease; }
+.nav-title { font-size: 1.1rem; font-weight: 650; padding: 0 .75rem 2.4rem; }
+
 /* A checkbox is shorter than a dropdown; lift it so their midlines match when bottom-aligned. */
 .st-key-sites_mismatch { margin-bottom: 0.875rem; }
 </style>
@@ -45,12 +56,14 @@ h3 { font-size: 1.1rem !important; font-weight: 600; margin-top: 1.4rem !importa
 st.markdown(STYLE, unsafe_allow_html=True)
 
 with st.sidebar:
-    st.markdown("### :lock: CAPTCHA Tool")
-    health = api.health()
-    if health.ok:
-        st.success("API online")
-    else:
-        st.error("API offline")
+    st.markdown('<div class="nav-title">CAPTCHA Tool</div>', unsafe_allow_html=True)
+    st.session_state.setdefault("page", "Overview")
+    for name, icon in PAGES.items():
+        if st.button(name, icon=icon, key=f"nav_{name}", use_container_width=True,
+                     type="primary" if st.session_state["page"] == name else "tertiary"):
+            st.session_state["page"] = name
+            st.rerun()
+    page = st.session_state["page"]
 
 
 def pct(x) -> str:
@@ -680,13 +693,11 @@ def sites_page() -> None:
                                   "needs_render", "http_status", "scan_ms", "error"], key="sites_list")
 
 
-pages = [
-    st.Page(overview, title="Overview", icon=":lock:"),
-    st.Page(solve_page, title="Solve", icon="🔓"),
-    st.Page(verify_page, title="Verify", icon="✓"),
-    st.Page(detect_page, title="Detect", icon="🔍"),
-    st.Page(batch_page, title="Batch", icon="📦"),
-    st.Page(sites_page, title="Sites", icon="🌐"),
-]
-selected_page = st.navigation(pages)
-selected_page.run()
+{
+    "Overview": overview,
+    "Solve": solve_page,
+    "Verify": verify_page,
+    "Detect": detect_page,
+    "Batch": batch_page,
+    "Sites": sites_page,
+}[page]()

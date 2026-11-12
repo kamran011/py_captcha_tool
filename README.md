@@ -1,6 +1,6 @@
 # CAPTCHA Solving & Verification Tool
 
-Technology Brainz, Assignment 01. A standalone tool that **recognises** CAPTCHA challenge types, **solves** synthetic text and math CAPTCHAs with a model trained here, **verifies** provider tokens server side using the providers' official test keys, and **reports** accuracy, latency and cost through an API and a dashboard.
+Technology Brainz, Assignment 01. A standalone tool that recognises CAPTCHA challenge types, solves synthetic text and math CAPTCHAs using a custom trained model, verifies provider tokens server-side using the providers' official test keys, and reports accuracy, latency and cost through an API and a dashboard.
 
 > **Scope (assignment sections 1 and 7).** Everything is exercised on synthetic CAPTCHAs, local demo pages and the providers' official test keys. Contact-form automation, bulk submission and solving CAPTCHAs on third-party sites are **not** built. The supplied 200-site CSV is used as a labelled recognition benchmark by a **read-only** scan: one plain GET per contact page plus that site's `robots.txt` (obeyed), static HTML analysis, nothing filled, submitted, solved or requested.
 

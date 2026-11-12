@@ -1,4 +1,4 @@
-# Design ("The Planner")
+# Design
 
 ## Stack
 

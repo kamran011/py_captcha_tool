@@ -54,8 +54,8 @@ These services were **not used** and nothing in this project calls them. They ar
 
 CapSolver was also checked but its pricing pages returned HTTP 404, so it is omitted rather than guessed. Using such services against sites that have not agreed to it would breach those sites' protections and is exactly what assignment section 7 rules out.
 
-## Reading the table
+## Notes on the table
 
-- For the synthetic style this project is built for, the local model is both the cheapest (no marginal cost) and measurably accurate (98.1% exact match), but it only exists for that style: a different CAPTCHA design would need a new dataset and training run.
-- The vision API is the flexible option and still cheap per call, but it sends images to a third party, its accuracy here is unmeasured, and its confidence is uncalibrated until `ml/calibrate.py --vision N` is run.
+- For the synthetic style this project is built for, the local model costs nothing per image and reaches 98.1% exact match, but its accuracy only holds for that style: a different CAPTCHA design would need a new dataset and training run.
+- The vision API works on arbitrary styles and costs about $0.000028 per call, but it sends images to a third party, its accuracy here is unmeasured, and its confidence is uncalibrated until `ml/calibrate.py --vision N` is run.
 - For image CAPTCHAs the quoted commercial prices are roughly 18 to 36 times the vision estimate ($0.50 - $1.00 per 1,000 against about $0.028), and they are outside the project's scope.
